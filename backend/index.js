@@ -12,13 +12,21 @@ app.use(bodyParser.json());
 app.use(expressjwt({
   secret: 'your-secret-key',
   algorithms: ['HS256'],
-  credentialsRequired: false // Allows unauthenticated requests to proceed to route logic
+  credentialsRequired: false
 }).unless({
   path: [
     { url: '/api/hello', methods: ['GET'] },
     { url: '/api/auth/login', methods: ['POST'] }
   ]
 }));
+
+app.use((err, req, res, next) => {
+  if (err.name === 'UnauthorizedError') {
+    res.status(401).send({ error: 'Invalid or missing token' });
+  } else {
+    next();
+  }
+});
 
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
