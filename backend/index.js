@@ -1,4 +1,6 @@
 const { MongoClient } = require('mongodb');
+const jwt = require('jsonwebtoken');
+const { expressjwt } = require('express-jwt');
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
@@ -7,20 +9,32 @@ const uri = 'mongodb://localhost:27017'; // Update with your MongoDB URI if diff
 const client = new MongoClient(uri);
 
 app.use(bodyParser.json());
+app.use(expressjwt({
+  secret: 'your-secret-key',
+  algorithms: ['HS256']
+}));
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'password') { // Replace with secure validation
+    const token = jwt.sign({ username }, 'your-secret-key', { expiresIn: '1h' });
+    res.send({ token });
+  } else {
+    res.status(401).send({ error: 'Invalid credentials' });
+  }
+});
 
 async function run() {
   try {
     await client.connect();
     const database = client.db('maintenance');
     const assets = database.collection('assets');
-
     app.get('/api/assets', async (req, res) => {
       const { location } = req.query;
       const query = location ? { location } : {};
       const result = await assets.find(query).toArray();
       res.send(result);
     });
-
     app.post('/api/assets', async (req, res) => {
       const { name, location } = req.body;
       if (!name || !location) {
