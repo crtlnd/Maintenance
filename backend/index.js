@@ -15,14 +15,18 @@ async function run() {
     const assets = database.collection('assets');
 
     app.get('/api/assets', async (req, res) => {
-  const { location } = req.query;
-  const query = location ? { location } : {};
-  const result = await assets.find(query).toArray();
-  res.send(result);
-});
+      const { location } = req.query;
+      const query = location ? { location } : {};
+      const result = await assets.find(query).toArray();
+      res.send(result);
+    });
 
     app.post('/api/assets', async (req, res) => {
-      const newAsset = { id: (await assets.countDocuments()) + 1, ...req.body };
+      const { name, location } = req.body;
+      if (!name || !location) {
+        return res.status(400).send({ error: 'Name and location are required' });
+      }
+      const newAsset = { id: (await assets.countDocuments()) + 1, name, location };
       await assets.insertOne(newAsset);
       res.send(newAsset);
     });
