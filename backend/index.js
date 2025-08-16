@@ -11,7 +11,13 @@ const client = new MongoClient(uri);
 app.use(bodyParser.json());
 app.use(expressjwt({
   secret: 'your-secret-key',
-  algorithms: ['HS256']
+  algorithms: ['HS256'],
+  credentialsRequired: false // Allows unauthenticated requests to proceed to route logic
+}).unless({
+  path: [
+    { url: '/api/hello', methods: ['GET'] },
+    { url: '/api/auth/login', methods: ['POST'] }
+  ]
 }));
 
 app.post('/api/auth/login', (req, res) => {
