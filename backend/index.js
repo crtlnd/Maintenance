@@ -31,7 +31,7 @@ app.use((err, req, res, next) => {
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   if (username === 'admin' && password === 'password') { // Replace with secure validation
-    const token = jwt.sign({ username }, 'your-secret-key', { expiresIn: '1h' });
+    const token = jwt.sign({ username }, 'your-secret-key', { expiresIn: '24h' });
     res.send({ token });
   } else {
     res.status(401).send({ error: 'Invalid credentials' });
@@ -50,15 +50,40 @@ async function run() {
       res.send(result);
     });
     app.post('/api/assets', async (req, res) => {
-      const { name, location } = req.body;
+      const { name, location, status = 'active', nextDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), condition = 'good' } = req.body;
       if (!name || !location) {
         return res.status(400).send({ error: 'Name and location are required' });
       }
       const existingIds = await assets.distinct('id');
       const newId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
-      const newAsset = { id: newId, name, location };
+      const newAsset = { id: newId, name, location, status, nextDueDate, condition };
       await assets.insertOne(newAsset);
       res.send(newAsset);
+    });
+    app.get('/api/dashboard', async (req, res) => {
+      const overdueTasks = await assets.countDocuments({ status: 'overdue' });
+      const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      console.log('Seven days from now:', sevenDaysFromNow); // Debug log
+      const allAssets = await assets.find().toArray();
+      console.log('All assets with nextDueDate:', allAssets.map(asset => ({ id: asset.id, nextDueDate: asset.nextDueDate, status: asset.status }))); // Debug log
+      const upcomingMaintenanceAssets = await assets.aggregate([
+        {
+          $addFields: { nextDueDateAsDate: { $toDate: '$nextDueDate' } }
+        },
+        {
+          $match: {
+            nextDueDateAsDate: {
+              $gte: new Date(new Date().toISOString().split('T')[0]),
+              $lte: sevenDaysFromNow
+            },
+            status: { $ne: 'overdue' }
+          }
+        }
+      ]).toArray();
+      console.log('Upcoming maintenance assets:', upcomingMaintenanceAssets); // Debug log
+      const upcomingMaintenance = upcomingMaintenanceAssets.length;
+      const assetHealth = await assets.aggregate([{ $group: { _id: '$condition', count: { $sum: 1 } } }]).toArray();
+      res.send({ overdueTasks, upcomingMaintenance, assetHealth });
     });
   } finally {
     // Keep the connection open for this example
