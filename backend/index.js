@@ -54,7 +54,9 @@ async function run() {
       if (!name || !location) {
         return res.status(400).send({ error: 'Name and location are required' });
       }
-      const newAsset = { id: (await assets.countDocuments()) + 1, name, location };
+      const existingIds = await assets.distinct('id');
+      const newId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+      const newAsset = { id: newId, name, location };
       await assets.insertOne(newAsset);
       res.send(newAsset);
     });
