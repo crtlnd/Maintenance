@@ -9,16 +9,16 @@ const uri = 'mongodb://localhost:27017'; // Update with your MongoDB URI if diff
 const client = new MongoClient(uri);
 
 app.use(bodyParser.json());
-app.use(expressjwt({
-  secret: 'your-secret-key',
-  algorithms: ['HS256'],
-  credentialsRequired: false
-}).unless({
-  path: [
-    { url: '/api/hello', methods: ['GET'] },
-    { url: '/api/auth/login', methods: ['POST'] }
-  ]
-}));
+
+app.use((req, res, next) => {
+  if (req.path === '/api/auth/login' && req.method === 'POST') return next();
+  if (req.path === '/api/hello' && req.method === 'GET') return next();
+  expressjwt({
+    secret: 'your-secret-key',
+    algorithms: ['HS256'],
+    getToken: req => req.headers.authorization?.split(' ')[1]
+  })(req, res, next);
+});
 
 app.use((err, req, res, next) => {
   if (err.name === 'UnauthorizedError') {
