@@ -8,6 +8,7 @@ const assetsRoutes = require('./routes/assets');
 const authRoutes = require('./routes/auth');
 const rcaRoutes = require('./routes/rca');
 const rcmRoutes = require('./routes/rcm');
+const providersRoutes = require('./routes/providers');
 
 const app = express();
 
@@ -93,6 +94,7 @@ async function run() {
     app.use('/api/auth', authRoutes());
     app.use('/api/rca', rcaRoutes());
     app.use('/api/rcm', rcmRoutes());
+    app.use('/api/providers', providersRoutes());
     return true;
   } catch (error) {
     console.error('Server setup error:', error);
