@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { expressjwt } = require('express-jwt');
@@ -41,7 +42,7 @@ app.use((req, res, next) => {
   console.log('JWT Authentication - Request Path:', req.path);
   console.log('JWT Authentication - Authorization Header:', req.headers.authorization);
   expressjwt({
-    secret: 'your-secret-key',
+    secret: process.env.JWT_SECRET,
     algorithms: ['HS256'],
     getToken: req => {
       const token = req.headers.authorization?.split(' ')[1];
