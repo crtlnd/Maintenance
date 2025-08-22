@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const rcaRoutes = require('./routes/rca');
 const rcmRoutes = require('./routes/rcm');
 const providersRoutes = require('./routes/providers');
+const usersRoutes = require('./routes/users');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use((req, res, next) => {
 
 const exemptRoutes = [
   { path: '/api/auth/login', method: 'POST' },
+  { path: '/api/auth/signup', method: 'POST' },
   { path: '/health', method: 'GET' },
   { path: '/api/hello', method: 'GET' }
 ];
@@ -95,6 +97,7 @@ async function run() {
     app.use('/api/rca', rcaRoutes());
     app.use('/api/rcm', rcmRoutes());
     app.use('/api/providers', providersRoutes());
+    app.use('/api/users', usersRoutes());
     return true;
   } catch (error) {
     console.error('Server setup error:', error);
