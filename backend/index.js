@@ -1,23 +1,64 @@
-const { MongoClient } = require('mongodb');
+const express = require('express');
 const jwt = require('jsonwebtoken');
 const { expressjwt } = require('express-jwt');
-const express = require('express');
 const bodyParser = require('body-parser');
+const { connectDB } = require('./config/db');
+const assetsRoutes = require('./routes/assets');
+const authRoutes = require('./routes/auth');
+
 const app = express();
 
-const uri = 'mongodb://localhost:27017'; // Update with your MongoDB URI if different
-const client = new MongoClient(uri);
+// Body parser with extended error handling
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('Body parsing error:', err.message);
+    return res.status(400).send({ error: 'Invalid JSON body' });
+  }
+  next();
+});
+app.use((req, res, next) => {
+  console.log('Body parsed globally:', req.body);
+  next();
+});
 
-app.use(bodyParser.json());
+const exemptRoutes = [
+  { path: '/api/auth/login', method: 'POST' },
+  { path: '/health', method: 'GET' },
+  { path: '/api/hello', method: 'GET' }
+];
+
+function isExemptRoute(req) {
+  return exemptRoutes.some(route => route.path === req.path && route.method === req.method);
+}
 
 app.use((req, res, next) => {
-  if (req.path === '/api/auth/login' && req.method === 'POST') return next();
-  if (req.path === '/api/hello' && req.method === 'GET') return next();
+  if (isExemptRoute(req)) {
+    console.log('Exempting Path from JWT:', req.path);
+    return next();
+  }
+  console.log('JWT Authentication - Request Path:', req.path);
+  console.log('JWT Authentication - Authorization Header:', req.headers.authorization);
   expressjwt({
     secret: 'your-secret-key',
     algorithms: ['HS256'],
-    getToken: req => req.headers.authorization?.split(' ')[1]
-  })(req, res, next);
+    getToken: req => {
+      const token = req.headers.authorization?.split(' ')[1];
+      console.log('JWT Authentication - Extracted Token:', token);
+      return token;
+    }
+  })(req, res, (err) => {
+    if (err) {
+      console.error('JWT Authentication Error:', {
+        message: err.message,
+        name: err.name,
+        code: err.code,
+        status: err.status
+      });
+      return next(err);
+    }
+    next();
+  });
 });
 
 app.use((err, req, res, next) => {
@@ -28,71 +69,37 @@ app.use((err, req, res, next) => {
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === 'admin' && password === 'password') { // Replace with secure validation
-    const token = jwt.sign({ username }, 'your-secret-key', { expiresIn: '24h' });
-    res.send({ token });
-  } else {
-    res.status(401).send({ error: 'Invalid credentials' });
-  }
+// Test route to verify body parsing
+app.post('/api/test-body', (req, res) => {
+  console.log('Test body received:', req.body);
+  res.status(200).send({ received: req.body });
 });
 
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).send({ status: 'healthy' });
+});
+
+// Routes
 async function run() {
   try {
-    await client.connect();
-    const database = client.db('maintenance');
+    const database = await connectDB();
     const assets = database.collection('assets');
-    app.get('/api/assets', async (req, res) => {
-      const { location } = req.query;
-      const query = location ? { location } : {};
-      const result = await assets.find(query).toArray();
-      res.send(result);
-    });
-    app.post('/api/assets', async (req, res) => {
-      const { name, location, status = 'active', nextDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), condition = 'good' } = req.body;
-      if (!name || !location) {
-        return res.status(400).send({ error: 'Name and location are required' });
-      }
-      const existingIds = await assets.distinct('id');
-      const newId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
-      const newAsset = { id: newId, name, location, status, nextDueDate, condition };
-      await assets.insertOne(newAsset);
-      res.send(newAsset);
-    });
-    app.get('/api/dashboard', async (req, res) => {
-      const overdueTasks = await assets.countDocuments({ status: 'overdue' });
-      const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      console.log('Seven days from now:', sevenDaysFromNow); // Debug log
-      const allAssets = await assets.find().toArray();
-      console.log('All assets with nextDueDate:', allAssets.map(asset => ({ id: asset.id, nextDueDate: asset.nextDueDate, status: asset.status }))); // Debug log
-      const upcomingMaintenanceAssets = await assets.aggregate([
-        {
-          $addFields: { nextDueDateAsDate: { $toDate: '$nextDueDate' } }
-        },
-        {
-          $match: {
-            nextDueDateAsDate: {
-              $gte: new Date(new Date().toISOString().split('T')[0]),
-              $lte: sevenDaysFromNow
-            },
-            status: { $ne: 'overdue' }
-          }
-        }
-      ]).toArray();
-      console.log('Upcoming maintenance assets:', upcomingMaintenanceAssets); // Debug log
-      const upcomingMaintenance = upcomingMaintenanceAssets.length;
-      const assetHealth = await assets.aggregate([{ $group: { _id: '$condition', count: { $sum: 1 } } }]).toArray();
-      res.send({ overdueTasks, upcomingMaintenance, assetHealth });
-    });
-  } finally {
-    // Keep the connection open for this example
-    // await client.close(); // Uncomment to close on app exit if needed
+    console.log('Registering routes...');
+    app.use('/api/assets', assetsRoutes(assets));
+    app.use('/api/auth', authRoutes());
+    return true;
+  } catch (error) {
+    console.error('Server setup error:', error);
+    process.exit(1);
   }
 }
 
-run().catch(console.dir);
-
-app.get('/api/hello', (req, res) => { res.send('Hello from backend!'); });
-
-app.listen(3000, () => console.log('Server running on port 3000'));
+(async () => {
+  if (await run()) {
+    console.log('Server setup complete, starting server on port 3000');
+    app.listen(3000, () => console.log('Server running on port 3000'));
+  } else {
+    console.error('Server setup failed, not starting');
+  }
+})();
