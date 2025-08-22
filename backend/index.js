@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const assetsRoutes = require('./routes/assets');
 const authRoutes = require('./routes/auth');
 const rcaRoutes = require('./routes/rca');
+const rcmRoutes = require('./routes/rcm');
 
 const app = express();
 
@@ -85,15 +86,13 @@ app.get('/health', (req, res) => {
 // Routes
 async function run() {
   try {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/maintenance', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/maintenance');
     console.log('Connected to MongoDB successfully');
     console.log('Registering routes...');
     app.use('/api/assets', assetsRoutes());
     app.use('/api/auth', authRoutes());
     app.use('/api/rca', rcaRoutes());
+    app.use('/api/rcm', rcmRoutes());
     return true;
   } catch (error) {
     console.error('Server setup error:', error);

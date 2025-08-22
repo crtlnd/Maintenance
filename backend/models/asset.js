@@ -17,6 +17,13 @@ const rcaSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
+const rcmSchema = new mongoose.Schema({
+  task: { type: String, required: true },
+  interval: { type: Number, required: true, min: 1 },
+  criticality: { type: String, enum: ['high', 'medium', 'low'], required: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
 const assetSchema = new mongoose.Schema({
   id: { type: Number, required: true, unique: true },
   name: { type: String, required: true },
@@ -29,7 +36,8 @@ const assetSchema = new mongoose.Schema({
   condition: { type: String, enum: ['good', 'fair', 'poor'], default: 'good' },
   maintenanceHistory: [{ type: String }],
   fmea: [fmeaSchema],
-  rca: [rcaSchema]
+  rca: [rcaSchema],
+  rcm: [rcmSchema]
 });
 
 module.exports = mongoose.model('Asset', assetSchema);
