@@ -2,9 +2,10 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { expressjwt } = require('express-jwt');
 const bodyParser = require('body-parser');
-const { connectDB } = require('./config/db');
+const mongoose = require('mongoose');
 const assetsRoutes = require('./routes/assets');
 const authRoutes = require('./routes/auth');
+const rcaRoutes = require('./routes/rca');
 
 const app = express();
 
@@ -83,11 +84,15 @@ app.get('/health', (req, res) => {
 // Routes
 async function run() {
   try {
-    const database = await connectDB();
-    const assets = database.collection('assets');
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/maintenance', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log('Connected to MongoDB successfully');
     console.log('Registering routes...');
-    app.use('/api/assets', assetsRoutes(assets));
+    app.use('/api/assets', assetsRoutes());
     app.use('/api/auth', authRoutes());
+    app.use('/api/rca', rcaRoutes());
     return true;
   } catch (error) {
     console.error('Server setup error:', error);

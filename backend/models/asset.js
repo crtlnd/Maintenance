@@ -10,6 +10,13 @@ const fmeaSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
+const rcaSchema = new mongoose.Schema({
+  problem: { type: String, required: true },
+  whys: { type: [String], required: true, validate: [v => v.length === 5, 'Exactly 5 whys are required'] },
+  fishbone: { type: Object, default: {} },
+  timestamp: { type: Date, default: Date.now }
+});
+
 const assetSchema = new mongoose.Schema({
   id: { type: Number, required: true, unique: true },
   name: { type: String, required: true },
@@ -21,7 +28,8 @@ const assetSchema = new mongoose.Schema({
   nextDueDate: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
   condition: { type: String, enum: ['good', 'fair', 'poor'], default: 'good' },
   maintenanceHistory: [{ type: String }],
-  fmea: [fmeaSchema]
+  fmea: [fmeaSchema],
+  rca: [rcaSchema]
 });
 
 module.exports = mongoose.model('Asset', assetSchema);
