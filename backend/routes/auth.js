@@ -48,6 +48,9 @@ module.exports = () => {
         res.send({ token });
       } catch (error) {
         console.error('Error signing up:', error);
+        if (error.code === 11000) {
+          return res.status(400).send({ error: 'Username or email already exists' });
+        }
         res.status(500).send({ error: 'Server error' });
       }
     }

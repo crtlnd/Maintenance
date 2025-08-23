@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { expressjwt } = require('express-jwt');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const assetsRoutes = require('./routes/assets');
 const authRoutes = require('./routes/auth');
 const rcaRoutes = require('./routes/rca');
@@ -11,8 +12,12 @@ const rcmRoutes = require('./routes/rcm');
 const providersRoutes = require('./routes/providers');
 const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
+
+// Enable CORS
+app.use(cors({ origin: 'http://localhost:3001' }));
 
 // Body parser with extended error handling
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -100,6 +105,7 @@ async function run() {
     app.use('/api/providers', providersRoutes());
     app.use('/api/users', usersRoutes());
     app.use('/api/admin', adminRoutes());
+    app.use('/api/ai', aiRoutes());
     return true;
   } catch (error) {
     console.error('Server setup error:', error);
