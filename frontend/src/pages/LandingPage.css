@@ -1,0 +1,48 @@
+.landing-page {
+  font-family: Arial, sans-serif;
+  color: #333;
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  padding: 50px 0;
+  background-color: #f8f8f8;
+}
+
+h1 {
+  font-size: 2.5em;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #000;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 5px;
+}
+
+.features, .pricing {
+  margin: 40px 0;
+}
+
+.pricing-tiers {
+  display: flex;
+  justify-content: space-around;
+}
+
+.tier {
+  border: 1px solid #ddd;
+  padding: 20px;
+  width: 30%;
+  border-radius: 5px;
+}
+
+footer {
+  margin-top: 40px;
+  padding: 20px 0;
+  background-color: #f8f8f8;
+}
