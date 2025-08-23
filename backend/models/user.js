@@ -11,7 +11,10 @@ const userSchema = new mongoose.Schema({
     email: { type: Boolean, default: true },
     sms: { type: Boolean, default: false }
   },
-  consent: { type: Boolean, required: true, default: false }, // Texas Data Privacy compliance
+  consent: { type: Boolean, required: true, default: false },
+  subscriptionTier: { type: String, enum: ['free', 'pro', 'ai-powered'], default: 'free' },
+  stripeCustomerId: { type: String },
+  stripeSubscriptionId: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 

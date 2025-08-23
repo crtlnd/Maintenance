@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/user');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const router = express.Router();
 
 module.exports = () => {
@@ -23,7 +24,26 @@ module.exports = () => {
         const { username, password, email, consent } = req.body;
         const existingUsers = await User.find().select('id');
         const newId = existingUsers.length > 0 ? Math.max(...existingUsers.map(u => u.id)) + 1 : 1;
-        const user = await User.create({ id: newId, username, password, email, consent });
+
+        const customer = await stripe.customers.create({ email });
+        const paymentMethod = await stripe.paymentMethods.create({
+          type: 'card',
+          card: { token: 'tok_visa' }
+        });
+        await stripe.paymentMethods.attach(paymentMethod.id, { customer: customer.id });
+        await stripe.customers.update(customer.id, {
+          invoice_settings: { default_payment_method: paymentMethod.id }
+        });
+
+        const user = await User.create({
+          id: newId,
+          username,
+          password,
+          email,
+          consent,
+          stripeCustomerId: customer.id,
+          subscriptionTier: 'free'
+        });
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
         res.send({ token });
       } catch (error) {

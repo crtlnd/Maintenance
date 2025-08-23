@@ -11,9 +11,11 @@ const providerSchema = new mongoose.Schema({
       lng: { type: Number, required: true }
     }
   },
-  radius: { type: Number, default: 50 }, // Max service radius in miles
+  radius: { type: Number, default: 50 },
   verified: { type: Boolean, default: false },
-  subscriptionTier: { type: String, enum: ['none', 'basic', 'standard', 'premium'], default: 'none' }
+  subscriptionTier: { type: String, enum: ['none', 'basic', 'standard', 'premium'], default: 'none' },
+  stripeCustomerId: { type: String },
+  stripeSubscriptionId: { type: String }
 });
 
 module.exports = mongoose.model('Provider', providerSchema);

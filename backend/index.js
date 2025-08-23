@@ -10,6 +10,7 @@ const rcaRoutes = require('./routes/rca');
 const rcmRoutes = require('./routes/rcm');
 const providersRoutes = require('./routes/providers');
 const usersRoutes = require('./routes/users');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -98,6 +99,7 @@ async function run() {
     app.use('/api/rcm', rcmRoutes());
     app.use('/api/providers', providersRoutes());
     app.use('/api/users', usersRoutes());
+    app.use('/api/admin', adminRoutes());
     return true;
   } catch (error) {
     console.error('Server setup error:', error);
