@@ -17,7 +17,7 @@ const aiRoutes = require('./routes/ai');
 const app = express();
 
 // Enable CORS
-app.use(cors({ origin: 'http://localhost:3001' }));
+app.use(cors({ origin: 'http://localhost:5173' }));
 
 // Body parser with extended error handling
 app.use(bodyParser.json({ limit: '10mb' }));
