@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Wrench, Shapes, Users, ClipboardList, Bot } from "lucide-react";
-import caseyUptimeLogo from "figma:asset/b0281f1af0d4ecb0182aeab92b8439ecbadd5431.png";
+import React, { useState } from 'react';
+import { Wrench, Shapes, Users, ClipboardList, Bot } from 'lucide-react';
+import caseyUptimeLogo from 'figma:asset/b0281f1af0d4ecb0182aeab92b8439ecbadd5431.png';
 import {
   Sidebar,
   SidebarContent,
@@ -10,41 +10,41 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarFooter,
-} from "./components/ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "./components/ui/avatar";
-import { Button } from "./components/ui/button";
-import { CurrentView, ServiceProviderView, AdminView, MaintenanceTask } from "./types";
+} from './components/ui/sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
+import { Button } from './components/ui/button';
+import { CurrentView, ServiceProviderView, AdminView, MaintenanceTask } from './types';
 import {
   initialAssets,
   initialFMEAData,
   initialRCAData,
   initialMaintenanceData,
   initialServiceProviders,
-} from "./data/initialData";
-import { TaskListView } from "./components/views/TaskListView";
-import { AssetsView } from "./components/views/AssetsView";
-import { AssetDetailView } from "./components/views/AssetDetailView";
-import { ProvidersView } from "./components/views/ProvidersView";
-import { AccountView } from "./components/views/AccountView";
-import { ServiceProviderDashboardView } from "./components/views/ServiceProviderDashboardView";
-import { ServiceRequestsView } from "./components/views/ServiceRequestsView";
-import { ServiceProviderProfileView } from "./components/views/ServiceProviderProfileView";
-import { AdminDashboardView } from "./components/views/AdminDashboardView";
-import { AdminUsersView } from "./components/views/AdminUsersView";
-import { AdminPaymentsView } from "./components/views/AdminPaymentsView";
-import { AdminMatchingView } from "./components/views/AdminMatchingView";
-import { AdminAnalyticsView } from "./components/views/AdminAnalyticsView";
-import { ServiceProviderSidebar } from "./components/ServiceProviderSidebar";
-import { AdminSidebar } from "./components/AdminSidebar";
-import { AuthPage } from "./components/auth/AuthPage";
-import { LandingPage } from "./components/LandingPage";
-import { LandingPageDemo } from "./components/LandingPageDemo";
-import { AuthProvider, useAuth } from "./utils/auth";
-import { NotificationService, getResponsiblePersonContact } from "./utils/notifications";
-import { toast } from "sonner@2.0.3";
-import { Toaster } from "./components/ui/sonner";
-import { AIAssistantView } from "./components/views/AIAssistantView";
-import { SEOHead, generateAssetManagementSEO, generateProviderListingSEO } from "./utils/seo";
+} from './data/initialData';
+import { TaskListView } from './components/views/TaskListView';
+import { AssetsView } from './components/views/AssetsView';
+import { AssetDetailView } from './components/views/AssetDetailView';
+import { ProvidersView } from './components/views/ProvidersView';
+import { AccountView } from './components/views/AccountView';
+import { ServiceProviderDashboardView } from './components/views/ServiceProviderDashboardView';
+import { ServiceRequestsView } from './components/views/ServiceRequestsView';
+import { ServiceProviderProfileView } from './components/views/ServiceProviderProfileView';
+import { AdminDashboardView } from './components/views/AdminDashboardView';
+import { AdminUsersView } from './components/views/AdminUsersView';
+import { AdminPaymentsView } from './components/views/AdminPaymentsView';
+import { AdminMatchingView } from './components/views/AdminMatchingView';
+import { AdminAnalyticsView } from './components/views/AdminAnalyticsView';
+import { ServiceProviderSidebar } from './components/ServiceProviderSidebar';
+import { AdminSidebar } from './components/AdminSidebar';
+import { AuthPage } from './components/auth/AuthPage';
+import { LandingPage } from './components/LandingPage';
+import { LandingPageDemo } from './components/LandingPageDemo';
+import { AuthProvider, useAuth } from './utils/auth';
+import { NotificationService } from './utils/notifications';
+import { toast } from 'sonner';
+import { Toaster } from './components/ui/sonner';
+import { AIAssistantView } from './components/views/AIAssistantView';
+import { SEOHead, generateAssetManagementSEO, generateProviderListingSEO } from './utils/seo';
 
 function AppSidebar({
   currentView,
@@ -54,45 +54,29 @@ function AppSidebar({
   onViewChange: (view: CurrentView) => void;
 }) {
   const { user } = useAuth();
-  const baseMenuItems = [
+  const menuItems = [
     {
-      title: "Asset Dashboard",
+      title: 'Asset Dashboard',
       icon: Shapes,
-      key: "assets" as CurrentView,
+      key: 'assets' as CurrentView,
     },
     {
-      title: "Task List",
+      title: 'Task List',
       icon: ClipboardList,
-      key: "tasks" as CurrentView,
+      key: 'tasks' as CurrentView,
     },
     {
-      title: "AI Assistant",
+      title: 'AI Assistant',
       icon: Bot,
-      key: "ai-assistant" as CurrentView,
+      key: 'ai-assistant' as CurrentView,
     },
     {
-      title: "Service Providers",
+      title: 'Service Providers',
       icon: Users,
-      key: "providers" as CurrentView,
+      key: 'providers' as CurrentView,
     },
   ];
-  const menuItems = user?.userType === "customer" ? baseMenuItems : [
-    {
-      title: "Asset Dashboard",
-      icon: Shapes,
-      key: "assets" as CurrentView,
-    },
-    {
-      title: "Task List",
-      icon: ClipboardList,
-      key: "tasks" as CurrentView,
-    },
-    {
-      title: "Service Providers",
-      icon: Users,
-      key: "providers" as CurrentView,
-    },
-  ];
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4 border-b border-sidebar-border">
@@ -111,7 +95,7 @@ function AppSidebar({
               >
                 <item.icon className="h-4 w-4" />
                 <span>{item.title}</span>
-                {item.key === "ai-assistant" && user?.subscription.plan !== "ai-powered" && (
+                {item.key === 'ai-assistant' && user?.subscription.plan !== 'ai-powered' && (
                   <div className="ml-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-2 py-0.5 rounded-full">
                     Pro
                   </div>
@@ -124,24 +108,22 @@ function AppSidebar({
       <SidebarFooter className="p-2 border-t border-sidebar-border">
         <SidebarMenuItem>
           <SidebarMenuButton
-            isActive={currentView === "account"}
-            onClick={() => onViewChange("account")}
+            isActive={currentView === 'account'}
+            onClick={() => onViewChange('account')}
             className="w-full justify-start"
           >
             <div className="flex items-center gap-2 flex-1">
               <Avatar className="h-6 w-6">
                 <AvatarImage src={user?.avatar} />
                 <AvatarFallback className="text-xs">
-                  {user?.firstName[0]}{user?.lastName[0]}
+                  {user?.firstName?.[0] ?? ''}{user?.lastName?.[0] ?? ''}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col items-start">
                 <span className="text-sm font-medium">
                   {user?.firstName} {user?.lastName}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {user?.role}
-                </span>
+                <span className="text-xs text-muted-foreground">{user?.role}</span>
               </div>
             </div>
           </SidebarMenuButton>
@@ -153,9 +135,9 @@ function AppSidebar({
 
 function MainApp() {
   const { isAuthenticated, loading, user, logout } = useAuth();
-  const [currentView, setCurrentView] = useState<CurrentView>("assets");
-  const [serviceProviderView, setServiceProviderView] = useState<ServiceProviderView>("dashboard");
-  const [adminView, setAdminView] = useState<AdminView>("dashboard");
+  const [currentView, setCurrentView] = useState<CurrentView>('assets');
+  const [serviceProviderView, setServiceProviderView] = useState<ServiceProviderView>('dashboard');
+  const [adminView, setAdminView] = useState<AdminView>('dashboard');
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const [assets, setAssets] = useState(initialAssets);
   const [fmeaData, setFmeaData] = useState(initialFMEAData);
@@ -168,40 +150,42 @@ function MainApp() {
   const getSEOData = () => {
     if (!isAuthenticated && !showAuthPage) {
       return {
-        title: "Casey Uptime - Modern Maintenance Management Software",
-        description: "Stop reactive maintenance. Reduce downtime by 45% with smart asset management, preventive scheduling, and AI-powered insights. Start free - no credit card required.",
-        keywords: "maintenance management software, preventive maintenance, asset management, CMMS, maintenance scheduling, equipment tracking, maintenance optimization",
+        title: 'Casey Uptime - Modern Maintenance Management Software',
+        description:
+          'Stop reactive maintenance. Reduce downtime by 45% with smart asset management, preventive scheduling, and AI-powered insights. Start free - no credit card required.',
+        keywords:
+          'maintenance management software, preventive maintenance, asset management, CMMS, maintenance scheduling, equipment tracking, maintenance optimization',
       };
     }
     if (!isAuthenticated && showAuthPage) {
       return {
-        title: "Login & Signup | Casey Uptime",
-        description: "Sign in to your maintenance management account or create a new account to get started with professional asset management.",
-        keywords: "login, signup, maintenance management, asset management, account creation",
+        title: 'Login & Signup | Casey Uptime',
+        description: 'Sign in to your maintenance management account or create a new account to get started with professional asset management.',
+        keywords: 'login, signup, maintenance management, asset management, account creation',
       };
     }
     switch (currentView) {
-      case "assets":
+      case 'assets':
         return generateAssetManagementSEO();
-      case "providers":
+      case 'providers':
         return generateProviderListingSEO();
-      case "tasks":
+      case 'tasks':
         return {
-          title: "Maintenance Tasks & Work Orders | Maintenance Manager",
-          description: "Manage maintenance tasks, work orders, and preventive maintenance schedules efficiently. Track progress and optimize workflow.",
-          keywords: "maintenance tasks, work orders, preventive maintenance, task management, maintenance scheduling",
+          title: 'Maintenance Tasks & Work Orders | Maintenance Manager',
+          description: 'Manage maintenance tasks, work orders, and preventive maintenance schedules efficiently. Track progress and optimize workflow.',
+          keywords: 'maintenance tasks, work orders, preventive maintenance, task management, maintenance scheduling',
         };
-      case "ai-assistant":
+      case 'ai-assistant':
         return {
-          title: "AI-Powered Maintenance Assistant | Maintenance Manager",
-          description: "Get intelligent maintenance recommendations, predictive analysis, and automated insights with our advanced AI assistant.",
-          keywords: "AI maintenance, predictive maintenance, intelligent recommendations, automated analysis, maintenance AI",
+          title: 'AI-Powered Maintenance Assistant | Maintenance Manager',
+          description: 'Get intelligent maintenance recommendations, predictive analysis, and automated insights with our advanced AI assistant.',
+          keywords: 'AI maintenance, predictive maintenance, intelligent recommendations, automated analysis, maintenance AI',
         };
-      case "account":
+      case 'account':
         return {
-          title: "Account Settings & Subscription | Maintenance Manager",
-          description: "Manage your account settings, subscription plans, and billing information for Maintenance Manager platform.",
-          keywords: "account settings, subscription, billing, profile management",
+          title: 'Account Settings & Subscription | Maintenance Manager',
+          description: 'Manage your account settings, subscription plans, and billing information for Maintenance Manager platform.',
+          keywords: 'account settings, subscription, billing, profile management',
           noIndex: true,
         };
       default:
@@ -279,7 +263,7 @@ function MainApp() {
     </div>
   );
 
-  if (user?.userType === "admin") {
+  if (user?.userType === 'admin') {
     return (
       <>
         <SEOHead
@@ -295,13 +279,13 @@ function MainApp() {
               onViewChange={setAdminView}
             />
             <main className="flex-1 overflow-auto">
-              {adminView === "dashboard" && <AdminDashboardView />}
-              {adminView === "users" && <AdminUsersView />}
-              {adminView === "providers" && <AdminUsersView />}
-              {adminView === "payments" && <AdminPaymentsView />}
-              {adminView === "matching" && <AdminMatchingView />}
-              {adminView === "analytics" && <AdminAnalyticsView />}
-              {adminView === "account" && <AccountView />}
+              {adminView === 'dashboard' && <AdminDashboardView />}
+              {adminView === 'users' && <AdminUsersView />}
+              {adminView === 'providers' && <AdminUsersView />}
+              {adminView === 'payments' && <AdminPaymentsView />}
+              {adminView === 'matching' && <AdminMatchingView />}
+              {adminView === 'analytics' && <AdminAnalyticsView />}
+              {adminView === 'account' && <AccountView />}
             </main>
           </div>
         </SidebarProvider>
@@ -310,32 +294,32 @@ function MainApp() {
     );
   }
 
-  if (user?.userType === "service_provider") {
+  if (user?.userType === 'service_provider') {
     const getServiceProviderSEO = () => {
       switch (serviceProviderView) {
-        case "dashboard":
+        case 'dashboard':
           return {
-            title: "Service Provider Dashboard | Maintenance Manager",
-            description: "Manage your maintenance service business, view requests, and track performance on the Maintenance Manager platform.",
-            keywords: "service provider dashboard, maintenance business, service requests, business management",
+            title: 'Service Provider Dashboard | Maintenance Manager',
+            description: 'Manage your maintenance service business, view requests, and track performance on the Maintenance Manager platform.',
+            keywords: 'service provider dashboard, maintenance business, service requests, business management',
           };
-        case "requests":
+        case 'requests':
           return {
-            title: "Service Requests & Opportunities | Maintenance Manager",
-            description: "View and respond to maintenance service requests from local businesses. Grow your maintenance service business.",
-            keywords: "service requests, maintenance opportunities, business leads, service provider",
+            title: 'Service Requests & Opportunities | Maintenance Manager',
+            description: 'View and respond to maintenance service requests from local businesses. Grow your maintenance service business.',
+            keywords: 'service requests, maintenance opportunities, business leads, service provider',
           };
-        case "profile":
+        case 'profile':
           return {
-            title: "Service Provider Profile | Maintenance Manager",
-            description: "Manage your service provider profile, certifications, service areas, and business information.",
-            keywords: "service provider profile, business profile, certifications, service areas",
+            title: 'Service Provider Profile | Maintenance Manager',
+            description: 'Manage your service provider profile, certifications, service areas, and business information.',
+            keywords: 'service provider profile, business profile, certifications, service areas',
           };
         default:
           return {
-            title: "Service Provider Portal | Maintenance Manager",
-            description: "Professional portal for maintenance service providers to manage business and connect with customers.",
-            keywords: "service provider portal, maintenance services, business management",
+            title: 'Service Provider Portal | Maintenance Manager',
+            description: 'Professional portal for maintenance service providers to manage business and connect with customers.',
+            keywords: 'service provider portal, maintenance services, business management',
           };
       }
     };
@@ -349,10 +333,10 @@ function MainApp() {
               onViewChange={setServiceProviderView}
             />
             <main className="flex-1 overflow-auto">
-              {serviceProviderView === "dashboard" && <ServiceProviderDashboardView />}
-              {serviceProviderView === "requests" && <ServiceRequestsView />}
-              {serviceProviderView === "profile" && <ServiceProviderProfileView />}
-              {serviceProviderView === "account" && <AccountView />}
+              {serviceProviderView === 'dashboard' && <ServiceProviderDashboardView />}
+              {serviceProviderView === 'requests' && <ServiceRequestsView />}
+              {serviceProviderView === 'profile' && <ServiceProviderProfileView />}
+              {serviceProviderView === 'account' && <AccountView />}
             </main>
           </div>
         </SidebarProvider>
@@ -362,8 +346,8 @@ function MainApp() {
   }
 
   const getActiveView = (): CurrentView => {
-    if (selectedAssetId && currentView !== "account") {
-      return "assets";
+    if (selectedAssetId && currentView !== 'account') {
+      return 'assets';
     }
     return currentView;
   };
@@ -375,7 +359,7 @@ function MainApp() {
 
   const handleSelectAsset = (assetId: number) => {
     setSelectedAssetId(assetId);
-    setCurrentView("assets");
+    setCurrentView('assets');
   };
 
   const handleBack = () => {
@@ -392,8 +376,8 @@ function MainApp() {
   const handleEditAsset = (updatedAsset: any) => {
     setAssets((prev) =>
       prev.map((asset) =>
-        asset.id === updatedAsset.id ? updatedAsset : asset,
-      ),
+        asset.id === updatedAsset.id ? updatedAsset : asset
+      )
     );
   };
 
@@ -426,8 +410,8 @@ function MainApp() {
         const result = await notificationService.notifyTaskAssignment(
           task,
           asset,
-          email || "",
-          phone || "",
+          email || '',
+          phone || ''
         );
         const updatedTask = {
           ...task,
@@ -438,38 +422,36 @@ function MainApp() {
           },
         };
         setMaintenanceData((prev) =>
-          prev.map((t) => (t.id === taskId ? updatedTask : t)),
+          prev.map((t) => (t.id === taskId ? updatedTask : t))
         );
         if (result.emailSent || result.smsSent) {
           toast.success(
-            `Task assigned successfully! ${result.emailSent ? "Email" : ""}${result.emailSent && result.smsSent ? " and " : ""}${result.smsSent ? "SMS" : ""} notification${result.emailSent && result.smsSent ? "s" : ""} sent to ${task.responsible}.`,
+            `Task assigned successfully! ${result.emailSent ? 'Email' : ''}${result.emailSent && result.smsSent ? ' and ' : ''}${result.smsSent ? 'SMS' : ''} notification${result.emailSent && result.smsSent ? 's' : ''} sent to ${task.responsible}.`
           );
         } else {
           toast.warning(
-            "Task assigned, but notifications could not be sent. Please check contact information.",
+            'Task assigned, but notifications could not be sent. Please check contact information.'
           );
         }
       } catch (error) {
-        console.error("Error sending notifications:", error);
-        toast.error(
-          "Task assigned, but there was an error sending notifications.",
-        );
+        console.error('Error sending notifications:', error);
+        toast.error('Task assigned, but there was an error sending notifications.');
       }
     }
   };
 
   const handleCompleteTask = async (
     taskId: number,
-    completionData: { completedBy: string; completionNotes: string; completedAt: string },
+    completionData: { completedBy: string; completionNotes: string; completedAt: string }
   ) => {
     const updatedTask: Partial<MaintenanceTask> = {
-      status: "completed",
+      status: 'completed',
       ...completionData,
     };
     setMaintenanceData((prev) =>
       prev.map((task) =>
-        task.id === taskId ? { ...task, ...updatedTask } : task,
-      ),
+        task.id === taskId ? { ...task, ...updatedTask } : task
+      )
     );
     const task = maintenanceData.find((t) => t.id === taskId);
     const asset = assets.find((a) => a.id === task?.assetId);
@@ -480,13 +462,13 @@ function MainApp() {
           { ...task, ...updatedTask } as MaintenanceTask,
           asset,
           completionData.completedBy,
-          "supervisor@company.com",
-          "+1-555-0199",
+          'supervisor@company.com',
+          '+1-555-0199'
         );
         toast.success(`Task completed! Supervisor has been notified.`);
       } catch (error) {
-        console.error("Error sending completion notification:", error);
-        toast.warning("Task completed, but notification could not be sent.");
+        console.error('Error sending completion notification:', error);
+        toast.warning('Task completed, but notification could not be sent.');
       }
     }
   };
@@ -498,7 +480,7 @@ function MainApp() {
   };
 
   const renderContent = () => {
-    if (currentView === "account") {
+    if (currentView === 'account') {
       return <AccountView />;
     }
     if (selectedAssetId) {
@@ -520,7 +502,7 @@ function MainApp() {
       );
     }
     switch (currentView) {
-      case "assets":
+      case 'assets':
         return (
           <AssetsView
             assets={assets}
@@ -532,7 +514,7 @@ function MainApp() {
             onEditAsset={handleEditAsset}
           />
         );
-      case "tasks":
+      case 'tasks':
         return (
           <TaskListView
             assets={assets}
@@ -542,10 +524,10 @@ function MainApp() {
             onAddMaintenanceTask={handleAddSingleMaintenanceTask}
           />
         );
-      case "providers":
-        return <ProvidersView providers={serviceProviders} />;
-      case "ai-assistant":
-        if (user?.subscription.plan === "ai-powered") {
+      case 'providers':
+        return <ProvidersView providers={[]} />; // Empty array since ProvidersView fetches dynamically
+      case 'ai-assistant':
+        if (user?.subscription.plan === 'ai-powered') {
           return (
             <AIAssistantView
               assets={assets}
@@ -553,10 +535,10 @@ function MainApp() {
             />
           );
         } else {
-          const { AIAssistantUpgradeView } = require("./components/views/AIAssistantUpgradeView");
+          const { AIAssistantUpgradeView } = require('./components/views/AIAssistantUpgradeView');
           return (
             <AIAssistantUpgradeView
-              currentPlan={user?.subscription.plan || "free"}
+              currentPlan={user?.subscription.plan || 'free'}
             />
           );
         }
@@ -579,12 +561,11 @@ function MainApp() {
             currentView={getActiveView()}
             onViewChange={handleViewChange}
           />
-          <main className="flex-1 overflow-auto">
-            {renderContent()}
-          </main>
+          <main className="flex-1 overflow-auto">{renderContent()}</main>
         </div>
       </SidebarProvider>
       <DemoModeButton />
+      <Toaster />
     </>
   );
 }
@@ -593,7 +574,6 @@ export default function App() {
   return (
     <AuthProvider>
       <MainApp />
-      <Toaster />
     </AuthProvider>
   );
 }

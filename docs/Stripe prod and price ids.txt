@@ -1,0 +1,14 @@
+
+Provider Verified
+Price ID price_1S0lDuGi9H80HINU4TkumgNG
+Product ID prod_SweWFWUF1zgE6R
+
+Provider Premium 
+Price ID price_1S0lI2Gi9H80HINUbLa9wOvx
+Product ID prod_SweWFWUF1zgE6R
+
+Provider Promoted
+Price ID price_1S0lKPGi9H80HINUE7itJVlP
+Product ID prod_Swed0U0YVwTn5b
+
+

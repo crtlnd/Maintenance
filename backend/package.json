@@ -15,6 +15,7 @@
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
+    "cheerio": "^1.1.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
@@ -26,6 +27,7 @@
     "stripe": "^18.4.0"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "nodemon": "^3.1.4"
   }
 }

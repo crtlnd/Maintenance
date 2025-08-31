@@ -2,9 +2,20 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import * as path from 'path';
 import tailwindcss from '@tailwindcss/postcss';
+import { createHtmlPlugin } from 'vite-plugin-html';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    createHtmlPlugin({
+      minify: true,
+      inject: {
+        data: {
+          VITE_GOOGLE_MAPS_API_KEY: process.env.VITE_GOOGLE_MAPS_API_KEY,
+        },
+      },
+    }),
+  ],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {

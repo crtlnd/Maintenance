@@ -1,18 +1,22 @@
-require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { expressjwt } = require('express-jwt');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const assetsRoutes = require('./routes/assets');
-const authRoutes = require('./routes/auth');
-const rcaRoutes = require('./routes/rca');
-const rcmRoutes = require('./routes/rcm');
-const providersRoutes = require('./routes/providers');
-const usersRoutes = require('./routes/users');
-const adminRoutes = require('./routes/admin');
-const aiRoutes = require('./routes/ai');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+// Debug log to verify environment variables
+console.log('Environment variables in index.js:', {
+  MONGO_URI: process.env.MONGO_URI,
+  JWT_SECRET: process.env.JWT_SECRET,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  XAI_API_KEY: process.env.XAI_API_KEY,
+  GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
+  GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
+
+});
 
 const app = express();
 
@@ -28,6 +32,7 @@ app.use((err, req, res, next) => {
   }
   next();
 });
+
 app.use((req, res, next) => {
   console.log('Body parsed globally:', req.body);
   next();
@@ -37,7 +42,10 @@ const exemptRoutes = [
   { path: '/api/auth/login', method: 'POST' },
   { path: '/api/auth/signup', method: 'POST' },
   { path: '/health', method: 'GET' },
-  { path: '/api/hello', method: 'GET' }
+  { path: '/api/hello', method: 'GET' },
+  { path: '/api/providers', method: 'GET' },
+  { path: '/api/providers/subscribe', method: 'POST' },
+  { path: '/api/providers/claim', method: 'POST' },
 ];
 
 function isExemptRoute(req) {
@@ -58,14 +66,14 @@ app.use((req, res, next) => {
       const token = req.headers.authorization?.split(' ')[1];
       console.log('JWT Authentication - Extracted Token:', token);
       return token;
-    }
+    },
   })(req, res, (err) => {
     if (err) {
       console.error('JWT Authentication Error:', {
         message: err.message,
         name: err.name,
         code: err.code,
-        status: err.status
+        status: err.status,
       });
       return next(err);
     }
@@ -98,14 +106,16 @@ async function run() {
     await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/maintenance');
     console.log('Connected to MongoDB successfully');
     console.log('Registering routes...');
-    app.use('/api/assets', assetsRoutes());
-    app.use('/api/auth', authRoutes());
-    app.use('/api/rca', rcaRoutes());
-    app.use('/api/rcm', rcmRoutes());
-    app.use('/api/providers', providersRoutes());
-    app.use('/api/users', usersRoutes());
-    app.use('/api/admin', adminRoutes());
-    app.use('/api/ai', aiRoutes());
+    // Clear module cache for providers.js
+    delete require.cache[require.resolve('./routes/providers')];
+    app.use('/api/assets', require('./routes/assets')());
+    app.use('/api/auth', require('./routes/auth')());
+    app.use('/api/rca', require('./routes/rca')());
+    app.use('/api/rcm', require('./routes/rcm')());
+    app.use('/api/providers', require('./routes/providers')());
+    app.use('/api/users', require('./routes/users')());
+    app.use('/api/admin', require('./routes/admin')());
+    app.use('/api/ai', require('./routes/ai')());
     return true;
   } catch (error) {
     console.error('Server setup error:', error);

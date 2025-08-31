@@ -61,11 +61,11 @@ export type FMEAEntry = {
 
 export type FiveWhys = {
   problem: string;
-  why1: { question: string; answer: string; };
-  why2: { question: string; answer: string; };
-  why3: { question: string; answer: string; };
-  why4: { question: string; answer: string; };
-  why5: { question: string; answer: string; };
+  why1: { question: string; answer: string };
+  why2: { question: string; answer: string };
+  why3: { question: string; answer: string };
+  why4: { question: string; answer: string };
+  why5: { question: string; answer: string };
   rootCause: string;
 };
 
@@ -122,26 +122,39 @@ export type MaintenanceTask = {
 
 export type ServiceProvider = {
   id: number;
+  placeId: string;
   name: string;
-  type: 'dealer' | 'independent' | 'specialized' | 'fleet';
+  description: string;
+  serviceType: string;
   services: string[];
-  specializations: string[];
   address: string;
-  distance: number; // in miles
   phone: string;
-  email: string;
-  website?: string;
+  location: {
+    city: string;
+    coordinates: { type: string; coordinates: [number, number] };
+  };
+  radius: number;
+  type: 'independent' | 'specialized' | 'dealer' | 'fleet';
+  pricing: 'budget' | 'mid-range' | 'premium';
   rating: number;
   reviewCount: number;
+  availability: string;
+  specializations: string[];
   certifications: string[];
-  responseTime: string;
-  availability: '24/7' | 'business-hours' | 'on-call';
-  pricing: 'budget' | 'mid-range' | 'premium';
-  lastContracted?: string;
-  notes?: string;
-  isVerified?: boolean;
-  canDirectMessage?: boolean;
-  isPromoted?: boolean;
+  website?: string;
+  verified: boolean;
+  subscriptionTier: 'none' | 'verified' | 'contact' | 'promoted';
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  createdAt: string;
+  updatedAt: string;
+  distance?: number; // Optional, calculated by frontend or backend
+  email?: string; // Optional, not in backend
+  responseTime?: string; // Optional, not in backend
+  lastContracted?: string; // Optional, not in backend
+  notes?: string; // Optional, not in backend
+  canDirectMessage?: boolean; // Optional, map to subscriptionTier === 'contact' or 'promoted'
+  isPromoted?: boolean; // Optional, map to subscriptionTier === 'promoted'
 };
 
 export type NotificationPreferences = {

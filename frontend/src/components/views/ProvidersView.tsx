@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Star, MapPin, Phone, Users, Check, Map, List, Wrench, Zap, Cog } from 'lucide-react';
+import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -10,67 +11,85 @@ import { ServiceProvider } from '../../types';
 import { getProviderTypeColor, getPricingColor, getProviderTypeIcon } from '../../utils/helpers';
 import { ContactProviderDialog } from '../dialogs/ContactProviderDialog';
 
-// Service type mapping for filtering
 const SERVICE_TYPE_FILTERS = [
   { key: 'all', label: 'All Services', icon: Users, count: 0 },
   { key: 'mechanics', label: 'Mechanics', icon: Wrench, count: 0 },
   { key: 'welders', label: 'Welders', icon: Zap, count: 0 },
   { key: 'engineers', label: 'Engineers', icon: Cog, count: 0 },
   { key: 'electrical', label: 'Electrical', icon: Zap, count: 0 },
-  { key: 'hydraulics', label: 'Hydraulics', icon: Wrench, count: 0 }
+  { key: 'hydraulics', label: 'Hydraulics', icon: Wrench, count: 0 },
 ];
 
-// Mock map component for demonstration
-function ServiceProviderMap({ providers, selectedServiceTypes }: { 
-  providers: ServiceProvider[]; 
-  selectedServiceTypes: string[];
-}) {
-  const filteredProviders = providers.filter(provider => {
+interface FormData {
+  lat: string;
+  lng: string;
+  radius: string;
+  serviceType: string;
+}
+
+function ServiceProviderMap({ providers, selectedServiceTypes }: { providers: ServiceProvider[]; selectedServiceTypes: string[] }) {
+  const mapRef = useRef<HTMLDivElement>(null); // Ref for map container
+  const googleMap = useRef<google.maps.Map | null>(null); // Ref for Google Map instance
+  const markers = useRef<google.maps.Marker[]>([]); // Store markers to manage updates
+
+  const filteredProviders = providers.filter((provider) => {
     if (selectedServiceTypes.includes('all') || selectedServiceTypes.length === 0) {
       return true;
     }
-    
-    return selectedServiceTypes.some(serviceType => {
+    return selectedServiceTypes.some((serviceType) => {
       switch (serviceType) {
         case 'mechanics':
-          return provider.services.some(service => 
-            service.toLowerCase().includes('repair') || 
-            service.toLowerCase().includes('maintenance') ||
-            service.toLowerCase().includes('auto') ||
-            service.toLowerCase().includes('fleet')
+          return provider.services.some(
+            (service) =>
+              service &&
+              (service.toLowerCase().includes('repair') ||
+                service.toLowerCase().includes('maintenance') ||
+                service.toLowerCase().includes('auto') ||
+                service.toLowerCase().includes('fleet'))
           );
         case 'welders':
-          return provider.services.some(service => 
-            service.toLowerCase().includes('welding') ||
-            service.toLowerCase().includes('fabrication')
-          ) || provider.specializations.some(spec =>
-            spec.toLowerCase().includes('welding') ||
-            spec.toLowerCase().includes('fabrication')
+          return (
+            provider.services.some(
+              (service) => service && (service.toLowerCase().includes('welding') || service.toLowerCase().includes('fabrication'))
+            ) ||
+            provider.specializations.some(
+              (spec) => spec && (spec.toLowerCase().includes('welding') || spec.toLowerCase().includes('fabrication'))
+            )
           );
         case 'engineers':
-          return provider.services.some(service => 
-            service.toLowerCase().includes('engineering') ||
-            service.toLowerCase().includes('systems') ||
-            service.toLowerCase().includes('design')
-          ) || provider.specializations.some(spec =>
-            spec.toLowerCase().includes('engineering') ||
-            spec.toLowerCase().includes('technical')
+          return (
+            provider.services.some(
+              (service) =>
+                service &&
+                (service.toLowerCase().includes('engineering') ||
+                  service.toLowerCase().includes('systems') ||
+                  service.toLowerCase().includes('design'))
+            ) ||
+            provider.specializations.some(
+              (spec) => spec && (spec.toLowerCase().includes('engineering') || spec.toLowerCase().includes('technical'))
+            )
           );
         case 'electrical':
-          return provider.services.some(service => 
-            service.toLowerCase().includes('electrical') ||
-            service.toLowerCase().includes('power') ||
-            service.toLowerCase().includes('generator')
-          ) || provider.specializations.some(spec =>
-            spec.toLowerCase().includes('electrical') ||
-            spec.toLowerCase().includes('power') ||
-            spec.toLowerCase().includes('generator')
+          return (
+            provider.services.some(
+              (service) =>
+                service &&
+                (service.toLowerCase().includes('electrical') ||
+                  service.toLowerCase().includes('power') ||
+                  service.toLowerCase().includes('generator'))
+            ) ||
+            provider.specializations.some(
+              (spec) =>
+                spec &&
+                (spec.toLowerCase().includes('electrical') ||
+                  spec.toLowerCase().includes('power') ||
+                  spec.toLowerCase().includes('generator'))
+            )
           );
         case 'hydraulics':
-          return provider.services.some(service => 
-            service.toLowerCase().includes('hydraulic')
-          ) || provider.specializations.some(spec =>
-            spec.toLowerCase().includes('hydraulic')
+          return (
+            provider.services.some((service) => service && service.toLowerCase().includes('hydraulic')) ||
+            provider.specializations.some((spec) => spec && spec.toLowerCase().includes('hydraulic'))
           );
         default:
           return true;
@@ -78,114 +97,72 @@ function ServiceProviderMap({ providers, selectedServiceTypes }: {
     });
   });
 
-  // Predefined positions for better distribution
-  const providerPositions = [
-    { x: 120, y: 80 }, { x: 280, y: 60 }, { x: 200, y: 120 },
-    { x: 80, y: 180 }, { x: 320, y: 140 }, { x: 160, y: 220 },
-    { x: 240, y: 180 }, { x: 350, y: 100 }, { x: 100, y: 250 },
-    { x: 300, y: 240 }
-  ];
+  // Initialize and update Google Map
+  useEffect(() => {
+    if (mapRef.current && !googleMap.current) {
+      // Initialize map centered on Midland, TX
+      googleMap.current = new google.maps.Map(mapRef.current, {
+        center: { lat: 31.9973, lng: -102.0779 },
+        zoom: 10,
+        mapTypeControl: false,
+        streetViewControl: false,
+      });
+    }
 
-  const getServiceTypeColor = (provider: ServiceProvider) => {
-    if (provider.services.some(s => s.toLowerCase().includes('welding'))) return 'bg-orange-600';
-    if (provider.services.some(s => s.toLowerCase().includes('engineering'))) return 'bg-purple-600';
-    if (provider.services.some(s => s.toLowerCase().includes('electrical'))) return 'bg-yellow-600';
-    if (provider.services.some(s => s.toLowerCase().includes('hydraulic'))) return 'bg-indigo-600';
-    return provider.isVerified ? 'bg-blue-600' : 'bg-gray-600';
-  };
+    // Clear existing markers
+    markers.current.forEach((marker) => marker.setMap(null));
+    markers.current = [];
+
+    // Add markers for filtered providers
+    filteredProviders.forEach((provider) => {
+      const marker = new google.maps.Marker({
+        position: { lat: provider.location.coordinates.coordinates[1], lng: provider.location.coordinates.coordinates[0] },
+        map: googleMap.current,
+        title: provider.name,
+      });
+
+      // Add info window for marker
+      const infoWindow = new google.maps.InfoWindow({
+        content: `
+          <div style="padding: 10px; max-width: 200px;">
+            <h3 style="font-size: 14px; font-weight: bold; margin: 0;">${provider.name}</h3>
+            <p style="font-size: 12px; margin: 5px 0;">${provider.type} • ${provider.pricing}</p>
+            <p style="font-size: 12px; margin: 5px 0;">${provider.distance || 'N/A'} mi</p>
+            <p style="font-size: 12px; margin: 5px 0;">Rating: ${provider.rating} (${provider.reviewCount})</p>
+            ${provider.availability === '24/7' ? '<span style="font-size: 12px; color: green;">24/7 Available</span>' : ''}
+          </div>
+        `,
+      });
+
+      marker.addListener('click', () => {
+        infoWindow.open(googleMap.current, marker);
+      });
+
+      markers.current.push(marker);
+    });
+
+    // Adjust map bounds to fit all markers
+    if (filteredProviders.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      filteredProviders.forEach((provider) => {
+        bounds.extend({
+          lat: provider.location.coordinates.coordinates[1],
+          lng: provider.location.coordinates.coordinates[0],
+        });
+      });
+      googleMap.current?.fitBounds(bounds);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      markers.current.forEach((marker) => marker.setMap(null));
+      markers.current = [];
+    };
+  }, [filteredProviders]);
 
   return (
-    <div className="relative w-full h-96 bg-slate-100 rounded-lg overflow-hidden border">
-      {/* Enhanced map background */}
-      <div className="absolute inset-0">
-        <svg className="w-full h-full" viewBox="0 0 400 300">
-          {/* Map base */}
-          <rect width="100%" height="100%" fill="#f1f5f9"/>
-          
-          {/* Grid pattern */}
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" strokeWidth="1"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" opacity="0.5" />
-          
-          {/* Mock streets and areas */}
-          <path d="M 0 100 L 400 100" stroke="#94a3b8" strokeWidth="4" opacity="0.6"/>
-          <path d="M 0 200 L 400 200" stroke="#94a3b8" strokeWidth="4" opacity="0.6"/>
-          <path d="M 100 0 L 100 300" stroke="#94a3b8" strokeWidth="4" opacity="0.6"/>
-          <path d="M 300 0 L 300 300" stroke="#94a3b8" strokeWidth="4" opacity="0.6"/>
-          
-          {/* Industrial areas */}
-          <rect x="50" y="50" width="80" height="60" fill="#10b981" fillOpacity="0.1" stroke="#10b981" strokeWidth="1" strokeDasharray="3,3"/>
-          <text x="90" y="85" fontSize="8" fill="#059669" textAnchor="middle">Industrial Zone A</text>
-          
-          <rect x="250" y="150" width="90" height="70" fill="#3b82f6" fillOpacity="0.1" stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3"/>
-          <text x="295" y="190" fontSize="8" fill="#2563eb" textAnchor="middle">Commercial Zone</text>
-        </svg>
-      </div>
-
-      {/* Provider markers */}
-      {filteredProviders.map((provider, index) => {
-        const position = providerPositions[index % providerPositions.length];
-        const markerColor = getServiceTypeColor(provider);
-        
-        return (
-          <div
-            key={provider.id}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer z-10"
-            style={{ left: `${position.x}px`, top: `${position.y}px` }}
-          >
-            {/* Marker */}
-            <div className="relative">
-              <div className={`w-8 h-8 rounded-full border-3 border-white shadow-lg flex items-center justify-center transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl ${markerColor}`}>
-                <div className="text-white text-xs font-medium">
-                  {provider.rating}
-                </div>
-              </div>
-              
-              {/* Pulse animation for 24/7 providers */}
-              {provider.availability === '24/7' && (
-                <div className={`absolute inset-0 rounded-full animate-ping ${markerColor} opacity-20`}></div>
-              )}
-              
-              {/* Enhanced tooltip */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
-                <div className="bg-white border border-gray-200 shadow-xl rounded-lg p-3 min-w-48">
-                  <div className="font-medium text-gray-900">{provider.name}</div>
-                  <div className="text-sm text-gray-600 mt-1">{provider.type} • {provider.pricing}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {provider.distance} mi • {provider.responseTime}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Star className="h-3 w-3 fill-current text-yellow-500" />
-                    <span className="text-xs">{provider.rating} ({provider.reviewCount})</span>
-                  </div>
-                  {provider.availability === '24/7' && (
-                    <Badge className="mt-2 text-xs" variant="secondary">
-                      24/7 Available
-                    </Badge>
-                  )}
-                </div>
-                {/* Tooltip arrow */}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-white"></div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* Map controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
-        <Button size="sm" variant="secondary" className="w-8 h-8 p-0 shadow-lg">
-          <span>+</span>
-        </Button>
-        <Button size="sm" variant="secondary" className="w-8 h-8 p-0 shadow-lg">
-          <span>−</span>
-        </Button>
-      </div>
-
-      {/* Enhanced legend */}
+    <div className="relative w-full h-96 rounded-lg overflow-hidden border">
+      <div ref={mapRef} className="w-full h-full" />
       <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border space-y-2">
         <div className="font-medium text-sm text-gray-900 mb-2">Service Types</div>
         <div className="space-y-1">
@@ -214,81 +191,123 @@ function ServiceProviderMap({ providers, selectedServiceTypes }: {
             <span>Standard</span>
           </div>
         </div>
-        <div className="text-xs text-gray-600 pt-2 border-t">
-          {filteredProviders.length} providers shown
-        </div>
+        <div className="text-xs text-gray-600 pt-2 border-t">{filteredProviders.length} providers shown</div>
       </div>
-
-      {/* Center marker (user location) */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
         <div className="w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg">
           <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30"></div>
         </div>
-        <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600 whitespace-nowrap">
-          Your Location
-        </div>
+        <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600 whitespace-nowrap">Your Location</div>
       </div>
     </div>
   );
 }
 
 export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
+  const [fetchedProviders, setFetchedProviders] = useState<ServiceProvider[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedPricing, setSelectedPricing] = useState<string>('all');
-  const [maxDistance, setMaxDistance] = useState<number>(1);
+  const [maxDistance, setMaxDistance] = useState<number>(31);
   const [selectedServiceTypes, setSelectedServiceTypes] = useState<string[]>(['all']);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [formData, setFormData] = useState<FormData>({
+    lat: '31.9973',
+    lng: '-102.0779',
+    radius: '31',
+    serviceType: 'mechanics',
+  });
 
-  // Calculate service type counts
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      const response = await axios.get('http://localhost:3000/api/providers', {
+        params: {
+          lat: formData.lat,
+          lng: formData.lng,
+          radius: formData.radius,
+          serviceType: formData.serviceType === 'all' ? undefined : formData.serviceType,
+        },
+      });
+      console.log('Providers fetched:', response.data);
+      setFetchedProviders(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching providers:', err.message);
+      setError(err.response?.data?.error || 'Failed to load providers. Please try again.');
+      setFetchedProviders([]);
+    }
+  };
+
+  useEffect(() => {
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+  }, []);
+
   const serviceTypeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    
-    SERVICE_TYPE_FILTERS.forEach(filter => {
+    SERVICE_TYPE_FILTERS.forEach((filter) => {
       if (filter.key === 'all') {
-        counts[filter.key] = providers.length;
+        counts[filter.key] = fetchedProviders.length;
       } else {
-        counts[filter.key] = providers.filter(provider => {
+        counts[filter.key] = fetchedProviders.filter((provider) => {
           switch (filter.key) {
             case 'mechanics':
-              return provider.services.some(service => 
-                service.toLowerCase().includes('repair') || 
-                service.toLowerCase().includes('maintenance') ||
-                service.toLowerCase().includes('auto') ||
-                service.toLowerCase().includes('fleet')
+              return provider.services.some(
+                (service) =>
+                  service &&
+                  (service.toLowerCase().includes('repair') ||
+                    service.toLowerCase().includes('maintenance') ||
+                    service.toLowerCase().includes('auto') ||
+                    service.toLowerCase().includes('fleet'))
               );
             case 'welders':
-              return provider.services.some(service => 
-                service.toLowerCase().includes('welding') ||
-                service.toLowerCase().includes('fabrication')
-              ) || provider.specializations.some(spec =>
-                spec.toLowerCase().includes('welding') ||
-                spec.toLowerCase().includes('fabrication')
+              return (
+                provider.services.some(
+                  (service) => service && (service.toLowerCase().includes('welding') || service.toLowerCase().includes('fabrication'))
+                ) ||
+                provider.specializations.some(
+                  (spec) => spec && (spec.toLowerCase().includes('welding') || spec.toLowerCase().includes('fabrication'))
+                )
               );
             case 'engineers':
-              return provider.services.some(service => 
-                service.toLowerCase().includes('engineering') ||
-                service.toLowerCase().includes('systems') ||
-                service.toLowerCase().includes('design')
-              ) || provider.specializations.some(spec =>
-                spec.toLowerCase().includes('engineering') ||
-                spec.toLowerCase().includes('technical')
+              return (
+                provider.services.some(
+                  (service) =>
+                    service &&
+                    (service.toLowerCase().includes('engineering') ||
+                      service.toLowerCase().includes('systems') ||
+                      service.toLowerCase().includes('design'))
+                ) ||
+                provider.specializations.some(
+                  (spec) => spec && (spec.toLowerCase().includes('engineering') || spec.toLowerCase().includes('technical'))
+                )
               );
             case 'electrical':
-              return provider.services.some(service => 
-                service.toLowerCase().includes('electrical') ||
-                service.toLowerCase().includes('power') ||
-                service.toLowerCase().includes('generator')
-              ) || provider.specializations.some(spec =>
-                spec.toLowerCase().includes('electrical') ||
-                spec.toLowerCase().includes('power') ||
-                spec.toLowerCase().includes('generator')
+              return (
+                provider.services.some(
+                  (service) =>
+                    service &&
+                    (service.toLowerCase().includes('electrical') ||
+                      service.toLowerCase().includes('power') ||
+                      service.toLowerCase().includes('generator'))
+                ) ||
+                provider.specializations.some(
+                  (spec) =>
+                    spec &&
+                    (spec.toLowerCase().includes('electrical') ||
+                      spec.toLowerCase().includes('power') ||
+                      spec.toLowerCase().includes('generator'))
+                )
               );
             case 'hydraulics':
-              return provider.services.some(service => 
-                service.toLowerCase().includes('hydraulic')
-              ) || provider.specializations.some(spec =>
-                spec.toLowerCase().includes('hydraulic')
+              return (
+                provider.services.some((service) => service && service.toLowerCase().includes('hydraulic')) ||
+                provider.specializations.some((spec) => spec && spec.toLowerCase().includes('hydraulic'))
               );
             default:
               return true;
@@ -296,90 +315,102 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
         }).length;
       }
     });
-    
     return counts;
-  }, [providers]);
+  }, [fetchedProviders]);
 
   const filteredProviders = useMemo(() => {
-    return providers.filter(provider => {
-      const matchesSearch = provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          provider.services.some(service => service.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          provider.specializations.some(spec => spec.toLowerCase().includes(searchTerm.toLowerCase()));
-      
+    const data = fetchedProviders.length > 0 ? fetchedProviders : providers;
+    return data.filter((provider) => {
+      const matchesSearch =
+        provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.services.some((service) => service && service.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        provider.specializations.some((spec) => spec && spec.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesType = selectedType === 'all' || provider.type === selectedType;
       const matchesPricing = selectedPricing === 'all' || provider.pricing === selectedPricing;
-      const matchesDistance = provider.distance <= maxDistance;
-      
-      const matchesServiceType = selectedServiceTypes.includes('all') || selectedServiceTypes.some(serviceType => {
-        switch (serviceType) {
-          case 'mechanics':
-            return provider.services.some(service => 
-              service.toLowerCase().includes('repair') || 
-              service.toLowerCase().includes('maintenance') ||
-              service.toLowerCase().includes('auto') ||
-              service.toLowerCase().includes('fleet')
-            );
-          case 'welders':
-            return provider.services.some(service => 
-              service.toLowerCase().includes('welding') ||
-              service.toLowerCase().includes('fabrication')
-            ) || provider.specializations.some(spec =>
-              spec.toLowerCase().includes('welding') ||
-              spec.toLowerCase().includes('fabrication')
-            );
-          case 'engineers':
-            return provider.services.some(service => 
-              service.toLowerCase().includes('engineering') ||
-              service.toLowerCase().includes('systems') ||
-              service.toLowerCase().includes('design')
-            ) || provider.specializations.some(spec =>
-              spec.toLowerCase().includes('engineering') ||
-              spec.toLowerCase().includes('technical')
-            );
-          case 'electrical':
-            return provider.services.some(service => 
-              service.toLowerCase().includes('electrical') ||
-              service.toLowerCase().includes('power') ||
-              service.toLowerCase().includes('generator')
-            ) || provider.specializations.some(spec =>
-              spec.toLowerCase().includes('electrical') ||
-              spec.toLowerCase().includes('power') ||
-              spec.toLowerCase().includes('generator')
-            );
-          case 'hydraulics':
-            return provider.services.some(service => 
-              service.toLowerCase().includes('hydraulic')
-            ) || provider.specializations.some(spec =>
-              spec.toLowerCase().includes('hydraulic')
-            );
-          default:
-            return true;
-        }
-      });
-
+      const matchesDistance = !provider.distance || provider.distance <= maxDistance;
+      const matchesServiceType =
+        selectedServiceTypes.includes('all') ||
+        selectedServiceTypes.some((serviceType) => {
+          switch (serviceType) {
+            case 'mechanics':
+              return provider.services.some(
+                (service) =>
+                  service &&
+                  (service.toLowerCase().includes('repair') ||
+                    service.toLowerCase().includes('maintenance') ||
+                    service.toLowerCase().includes('auto') ||
+                    service.toLowerCase().includes('fleet'))
+              );
+            case 'welders':
+              return (
+                provider.services.some(
+                  (service) => service && (service.toLowerCase().includes('welding') || service.toLowerCase().includes('fabrication'))
+                ) ||
+                provider.specializations.some(
+                  (spec) => spec && (spec.toLowerCase().includes('welding') || spec.toLowerCase().includes('fabrication'))
+                )
+              );
+            case 'engineers':
+              return (
+                provider.services.some(
+                  (service) =>
+                    service &&
+                    (service.toLowerCase().includes('engineering') ||
+                      service.toLowerCase().includes('systems') ||
+                      service.toLowerCase().includes('design'))
+                ) ||
+                provider.specializations.some(
+                  (spec) => spec && (spec.toLowerCase().includes('engineering') || spec.toLowerCase().includes('technical'))
+                )
+              );
+            case 'electrical':
+              return (
+                provider.services.some(
+                  (service) =>
+                    service &&
+                    (service.toLowerCase().includes('electrical') ||
+                      service.toLowerCase().includes('power') ||
+                      service.toLowerCase().includes('generator'))
+                ) ||
+                provider.specializations.some(
+                  (spec) =>
+                    spec &&
+                    (spec.toLowerCase().includes('electrical') ||
+                      spec.toLowerCase().includes('power') ||
+                      spec.toLowerCase().includes('generator'))
+                )
+              );
+            case 'hydraulics':
+              return (
+                provider.services.some((service) => service && service.toLowerCase().includes('hydraulic')) ||
+                provider.specializations.some((spec) => spec && spec.toLowerCase().includes('hydraulic'))
+              );
+            default:
+              return true;
+          }
+        });
       return matchesSearch && matchesType && matchesPricing && matchesDistance && matchesServiceType;
     });
-  }, [providers, searchTerm, selectedType, selectedPricing, maxDistance, selectedServiceTypes]);
+  }, [fetchedProviders, providers, searchTerm, selectedType, selectedPricing, maxDistance, selectedServiceTypes]);
 
   const stats = useMemo(() => {
     return {
-      total: providers.length,
-      available24_7: providers.filter(p => p.availability === '24/7').length,
-      highRated: providers.filter(p => p.rating >= 4.5).length,
-      avgDistance: (providers.reduce((sum, p) => sum + p.distance, 0) / providers.length).toFixed(1)
+      total: filteredProviders.length,
+      available24_7: filteredProviders.filter((p) => p.availability === '24/7').length,
+      highRated: filteredProviders.filter((p) => p.rating >= 4.5).length,
+      avgDistance: (filteredProviders.reduce((sum, p) => sum + (p.distance || 0), 0) / filteredProviders.length || 0).toFixed(1),
     };
-  }, [providers]);
+  }, [filteredProviders]);
 
   const handleServiceTypeToggle = (serviceType: string) => {
     if (serviceType === 'all') {
       setSelectedServiceTypes(['all']);
     } else {
-      const newSelected = selectedServiceTypes.includes('all') 
+      const newSelected = selectedServiceTypes.includes('all')
         ? [serviceType]
         : selectedServiceTypes.includes(serviceType)
-          ? selectedServiceTypes.filter(t => t !== serviceType)
-          : [...selectedServiceTypes.filter(t => t !== 'all'), serviceType];
-      
+        ? selectedServiceTypes.filter((t) => t !== serviceType)
+        : [...selectedServiceTypes.filter((t) => t !== 'all'), serviceType];
       setSelectedServiceTypes(newSelected.length === 0 ? ['all'] : newSelected);
     }
   };
@@ -391,8 +422,6 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
           <h2>Service Providers</h2>
           <p className="text-muted-foreground">Maintenance and repair companies within your area</p>
         </div>
-        
-        {/* View Toggle */}
         <div className="flex items-center gap-2">
           <Button
             variant={viewMode === 'list' ? 'default' : 'outline'}
@@ -412,8 +441,56 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
           </Button>
         </div>
       </div>
-
-      {/* Service Type Filters */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <Input
+          type="text"
+          name="lat"
+          value={formData.lat}
+          onChange={handleChange}
+          placeholder="Latitude (e.g., 31.9973)"
+          required
+        />
+        <Input
+          type="text"
+          name="lng"
+          value={formData.lng}
+          onChange={handleChange}
+          placeholder="Longitude (e.g., -102.0779)"
+          required
+        />
+        <Input
+          type="number"
+          name="radius"
+          value={formData.radius}
+          onChange={handleChange}
+          placeholder="Radius (miles)"
+          min="10"
+          max="31"
+        />
+        <Select
+          name="serviceType"
+          value={formData.serviceType}
+          onValueChange={(value) => setFormData({ ...formData, serviceType: value })}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Service Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Services</SelectItem>
+            <SelectItem value="mechanics">Mechanics</SelectItem>
+            <SelectItem value="welders">Welders</SelectItem>
+            <SelectItem value="engineers">Engineers</SelectItem>
+            <SelectItem value="electrical">Electrical</SelectItem>
+            <SelectItem value="hydraulics">Hydraulics</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button type="submit">Search</Button>
+      </form>
+      {error && (
+        <div className="bg-red-100 text-red-700 p-4 rounded-lg">
+          {error}
+        </div>
+      )}
       <Card>
         <CardContent className="p-4">
           <div className="space-y-4">
@@ -424,7 +501,6 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
                   const IconComponent = filter.icon;
                   const isSelected = selectedServiceTypes.includes(filter.key);
                   const count = serviceTypeCounts[filter.key] || 0;
-                  
                   return (
                     <Button
                       key={filter.key}
@@ -435,8 +511,8 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
                     >
                       <IconComponent className="h-4 w-4 mr-2" />
                       {filter.label}
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className={`ml-2 ${isSelected ? 'bg-primary-foreground text-primary' : ''}`}
                       >
                         {count}
@@ -446,14 +522,12 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
                 })}
               </div>
             </div>
-            
-            {/* Additional Filters */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search providers, services, or specializations..." 
+                  <Input
+                    placeholder="Search providers, services, or specializations..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -467,10 +541,10 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="dealer">Dealer</SelectItem>
-                    <SelectItem value="specialized">Specialized</SelectItem>
-                    <SelectItem value="fleet">Fleet Service</SelectItem>
                     <SelectItem value="independent">Independent</SelectItem>
+                    <SelectItem value="specialized">Specialized</SelectItem>
+                    <SelectItem value="dealer">Dealer</SelectItem>
+                    <SelectItem value="fleet">Fleet Service</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={selectedPricing} onValueChange={setSelectedPricing}>
@@ -489,10 +563,10 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
                     <SelectValue placeholder="Distance" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0.5">Within 0.5 miles</SelectItem>
-                    <SelectItem value="1">Within 1 mile</SelectItem>
-                    <SelectItem value="2">Within 2 miles</SelectItem>
-                    <SelectItem value="5">Within 5 miles</SelectItem>
+                    <SelectItem value="10">Within 10 miles</SelectItem>
+                    <SelectItem value="20">Within 20 miles</SelectItem>
+                    <SelectItem value="30">Within 30 miles</SelectItem>
+                    <SelectItem value="31">Within 31 miles</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -500,8 +574,6 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -528,25 +600,19 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Content based on view mode */}
       {viewMode === 'map' ? (
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Provider Locations</CardTitle>
-              <div className="text-sm text-muted-foreground">
-                Showing {filteredProviders.length} of {providers.length} providers
-              </div>
+              <div className="text-sm text-muted-foreground">Showing {filteredProviders.length} providers</div>
             </div>
-            {/* Service Type Filters for Map View */}
             <div className="pt-4 border-t">
               <div className="flex flex-wrap gap-2">
                 {SERVICE_TYPE_FILTERS.map((filter) => {
                   const IconComponent = filter.icon;
                   const isSelected = selectedServiceTypes.includes(filter.key);
                   const count = serviceTypeCounts[filter.key] || 0;
-                  
                   return (
                     <Button
                       key={filter.key}
@@ -557,8 +623,8 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
                     >
                       <IconComponent className="h-3 w-3 mr-1" />
                       {filter.label}
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className={`ml-2 text-xs ${isSelected ? 'bg-primary-foreground text-primary' : ''}`}
                       >
                         {count}
@@ -574,161 +640,151 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
           </CardContent>
         </Card>
       ) : (
-        /* Provider Cards */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredProviders.map((provider) => {
-            const IconComponent = getProviderTypeIcon(provider.type);
-            
-            return (
-              <Card key={provider.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-muted rounded-lg">
-                        <IconComponent className="h-5 w-5" />
+          {filteredProviders.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <h3>No providers found</h3>
+                  <p>Try adjusting your search criteria or expanding the distance range.</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredProviders.map((provider) => {
+              const IconComponent = getProviderTypeIcon(provider.type);
+              return (
+                <Card key={provider.placeId} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-muted rounded-lg">
+                          <IconComponent className="h-5 w-5" />
+                        </div>
+                        <div>
+                          {provider.verified && (
+                            <Badge className="bg-blue-600 text-white border-blue-700 shadow-sm mb-2 inline-flex items-center">
+                              <Check className="h-3 w-3 mr-1" />
+                              Verified Provider
+                            </Badge>
+                          )}
+                          <CardTitle className="text-lg">{provider.name}</CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className={getProviderTypeColor(provider.type)}>
+                              {provider.type}
+                            </Badge>
+                            <Badge variant="secondary" className={getPricingColor(provider.pricing)}>
+                              {provider.pricing}
+                            </Badge>
+                            {provider.subscriptionTier !== 'none' && (
+                              <Badge variant="secondary" className="bg-yellow-600 text-white">
+                                {provider.subscriptionTier.charAt(0).toUpperCase() + provider.subscriptionTier.slice(1)}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        {provider.id <= 2 && (
-                          <Badge className="bg-blue-600 text-white border-blue-700 shadow-sm mb-2 inline-flex items-center">
-                            <Check className="h-3 w-3 mr-1" />
-                            Verified Provider
-                          </Badge>
-                        )}
-                        <CardTitle className="text-lg">{provider.name}</CardTitle>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className={getProviderTypeColor(provider.type)}>
-                            {provider.type}
-                          </Badge>
-                          <Badge variant="secondary" className={getPricingColor(provider.pricing)}>
-                            {provider.pricing}
-                          </Badge>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 fill-current text-yellow-500" />
+                          <span>{provider.rating}</span>
+                          <span className="text-muted-foreground">({provider.reviewCount})</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3" />
+                          {provider.distance || 'N/A'} mi away
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-current text-yellow-500" />
-                        <span>{provider.rating}</span>
-                        <span className="text-muted-foreground">({provider.reviewCount})</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {provider.distance} mi away
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <h5 className="font-medium mb-2">Services Offered</h5>
+                      <div className="flex flex-wrap gap-1">
+                        {provider.services.slice(0, 4).map((service, index) => (
+                          service && (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {service}
+                            </Badge>
+                          )
+                        ))}
+                        {provider.services.length > 4 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{provider.services.length - 4} more
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Services */}
-                  <div>
-                    <h5 className="font-medium mb-2">Services Offered</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {provider.services.slice(0, 4).map((service, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {service}
-                        </Badge>
-                      ))}
-                      {provider.services.length > 4 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{provider.services.length - 4} more
-                        </Badge>
+                    {provider.specializations.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-2">Specializations</h5>
+                        <div className="flex flex-wrap gap-1">
+                          {provider.specializations.map((spec, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {spec}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Availability:</span>
+                        <p className="font-medium">{provider.availability}</p>
+                      </div>
+                    </div>
+                    {provider.certifications.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-2">Certifications</h5>
+                        <div className="flex flex-wrap gap-1">
+                          {provider.certifications.map((cert, index) => (
+                            <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700">
+                              {cert}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Address:</span>
+                      <p>{provider.address}</p>
+                    </div>
+                    {provider.notes && (
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="text-sm">{provider.notes}</p>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-3 border-t">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`tel:${provider.phone}`)}
+                        >
+                          <Phone className="h-4 w-4 mr-1" />
+                          Call
+                        </Button>
+                        {(provider.canDirectMessage || provider.subscriptionTier === 'contact' || provider.subscriptionTier === 'promoted') && (
+                          <ContactProviderDialog provider={provider} />
+                        )}
+                      </div>
+                      {provider.website && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(provider.website, '_blank')}
+                        >
+                          Visit Website
+                        </Button>
                       )}
                     </div>
-                  </div>
-
-                  {/* Specializations */}
-                  {provider.specializations.length > 0 && (
-                    <div>
-                      <h5 className="font-medium mb-2">Specializations</h5>
-                      <div className="flex flex-wrap gap-1">
-                        {provider.specializations.map((spec, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {spec}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Key Info */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Response Time:</span>
-                      <p className="font-medium">{provider.responseTime}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Availability:</span>
-                      <p className="font-medium">{provider.availability}</p>
-                    </div>
-                  </div>
-
-                  {/* Certifications */}
-                  {provider.certifications.length > 0 && (
-                    <div>
-                      <h5 className="font-medium mb-2">Certifications</h5>
-                      <div className="flex flex-wrap gap-1">
-                        {provider.certifications.map((cert, index) => (
-                          <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700">
-                            {cert}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Address */}
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Address:</span>
-                    <p>{provider.address}</p>
-                  </div>
-
-                  {/* Notes */}
-                  {provider.notes && (
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-sm">{provider.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex justify-between items-center pt-3 border-t">
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => window.open(`tel:${provider.phone}`)}
-                      >
-                        <Phone className="h-4 w-4 mr-1" />
-                        Call
-                      </Button>
-                      <ContactProviderDialog provider={provider} />
-                    </div>
-                    {provider.website && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => window.open(provider.website, '_blank')}
-                      >
-                        Visit Website
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
-      )}
-
-      {filteredProviders.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3>No providers found</h3>
-              <p>Try adjusting your search criteria or expanding the distance range.</p>
-            </div>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
