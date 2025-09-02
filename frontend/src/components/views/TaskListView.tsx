@@ -8,14 +8,14 @@ import { getUrgencyColor, getPriorityColor, getStatusColor } from '../../utils/h
 import { TaskCompletionDialog } from '../dialogs/TaskCompletionDialog';
 import { QuickAddTaskDialog } from '../dialogs/QuickAddTaskDialog';
 
-export function TaskListView({ 
-  assets, 
+export function TaskListView({
+  assets,
   maintenanceData,
   onSelectAsset,
   onCompleteTask,
   onAddMaintenanceTask
-}: { 
-  assets: Asset[]; 
+}: {
+  assets: Asset[];
   maintenanceData: MaintenanceTask[];
   onSelectAsset: (assetId: number) => void;
   onCompleteTask?: (taskId: number, completionData: {
@@ -32,10 +32,16 @@ export function TaskListView({
   // Calculate task urgency and remaining time
   const tasksWithUrgency = useMemo(() => {
     const today = new Date();
-    
+
     return maintenanceData
       .map(task => {
-        const asset = assets.find(a => a.id === task.assetId)!;
+        // FIXED: Handle missing assets gracefully
+        const asset = assets.find(a => a.id === task.assetId);
+        if (!asset) {
+          console.warn(`Asset with ID ${task.assetId} not found for task ${task.id}`);
+          return null; // Skip tasks with missing assets
+        }
+
         let hoursRemaining: number | undefined;
         let daysRemaining: number | undefined;
         let urgencyScore = 0;
@@ -58,7 +64,7 @@ export function TaskListView({
           const daysSinceCompleted = Math.floor((today.getTime() - lastCompletedDate.getTime()) / (1000 * 60 * 60 * 24));
           const estimatedHoursSinceCompleted = daysSinceCompleted * 8; // Assume 8 hours per day operation
           const totalHoursSinceCompleted = asset.operatingHours - (asset.operatingHours - estimatedHoursSinceCompleted);
-          
+
           hoursRemaining = task.hoursInterval - (totalHoursSinceCompleted % task.hoursInterval);
           if (hoursRemaining <= 0) hoursRemaining = 0;
         }
@@ -66,14 +72,14 @@ export function TaskListView({
         // Calculate days remaining
         const nextDueDate = new Date(task.nextDue);
         daysRemaining = Math.ceil((nextDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         // Calculate urgency score (0-100, higher = more urgent)
         if (task.status === 'overdue') {
           urgencyScore = 100;
         } else {
           let timeUrgency = 0;
           let hoursUrgency = 0;
-          
+
           // Time-based urgency
           if (daysRemaining <= 0) {
             timeUrgency = 100;
@@ -88,7 +94,7 @@ export function TaskListView({
           } else {
             timeUrgency = 10;
           }
-          
+
           // Hours-based urgency
           if (hoursRemaining !== undefined) {
             if (hoursRemaining <= 0) {
@@ -105,10 +111,10 @@ export function TaskListView({
               hoursUrgency = 10;
             }
           }
-          
+
           // Priority weight
           const priorityWeight = task.priority === 'high' ? 1.2 : task.priority === 'medium' ? 1.0 : 0.8;
-          
+
           // Combine urgencies (take the higher of time or hours, apply priority weight)
           urgencyScore = Math.max(timeUrgency, hoursUrgency) * priorityWeight;
           urgencyScore = Math.min(100, urgencyScore); // Cap at 100
@@ -121,7 +127,8 @@ export function TaskListView({
           daysRemaining,
           urgencyScore: Math.round(urgencyScore)
         } as TaskWithAsset;
-      });
+      })
+      .filter(task => task !== null) as TaskWithAsset[]; // FIXED: Remove null entries
   }, [assets, maintenanceData]);
 
   // Filter and sort tasks
@@ -174,7 +181,7 @@ export function TaskListView({
         </div>
         {onAddMaintenanceTask && (
           <div className="flex gap-2">
-            <QuickAddTaskDialog 
+            <QuickAddTaskDialog
               assets={assets}
               onAddMaintenanceTask={onAddMaintenanceTask}
               triggerVariant="primary"
@@ -258,8 +265,8 @@ export function TaskListView({
       {/* Task List */}
       <div className="space-y-4">
         {filteredAndSortedTasks.map((task) => (
-          <Card 
-            key={task.id} 
+          <Card
+            key={task.id}
             className={`hover:shadow-md transition-shadow ${task.status === 'completed' ? 'bg-green-50 border-green-200' : ''}`}
           >
             <CardContent className="p-6">
@@ -275,7 +282,7 @@ export function TaskListView({
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center gap-4 mb-3">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Shapes className="h-3 w-3" />
@@ -339,7 +346,7 @@ export function TaskListView({
                           {task.status}
                         </Badge>
                       </div>
-                      
+
                       {task.status !== 'completed' && (
                         <div className="text-right">
                           {task.hoursRemaining !== undefined && (
@@ -356,7 +363,7 @@ export function TaskListView({
                               </p>
                             </div>
                           )}
-                          
+
                           <div className="text-sm mt-1">
                             <span className="text-muted-foreground">Due date:</span>
                             <p className="font-medium">
@@ -381,7 +388,7 @@ export function TaskListView({
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2 ml-4">
                   {onCompleteTask && (
@@ -411,10 +418,10 @@ export function TaskListView({
           </CardContent>
         </Card>
       )}
-      
+
       {/* Floating Action Button */}
       {onAddMaintenanceTask && (
-        <QuickAddTaskDialog 
+        <QuickAddTaskDialog
           assets={assets}
           onAddMaintenanceTask={onAddMaintenanceTask}
           triggerVariant="fab"

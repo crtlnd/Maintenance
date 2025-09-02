@@ -197,3 +197,21 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Clean sidebar layout - replace the force-* classes with this */
+.sidebar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 256px;
+  height: 100vh;
+  z-index: 50;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+}
+
+.main-content {
+  margin-left: 256px;
+  min-height: 100vh;
+}
+

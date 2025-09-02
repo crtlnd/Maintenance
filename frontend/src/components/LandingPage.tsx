@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { ArrowRight, CheckCircle, Star, Users, TrendingUp, Shield, Clock, Zap, Bot, ChevronDown, Play, Menu, X } from 'lucide-react';
-import caseyUptimeLogo from 'figma:asset/b0281f1af0d4ecb0182aeab92b8439ecbadd5431.png';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+
+const caseyUptimeLogo = null; // Temporarily remove logo
 
 interface LandingPageProps {
   onGetStarted: () => void;
   onLogin: () => void;
 }
 
-export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
+export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   const features = [
     {
       icon: <TrendingUp className="h-8 w-8 text-blue-600" />,
@@ -52,7 +52,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
       benefits: ["Verified providers", "Local specialists", "Quick response times"]
     }
   ];
-
   const testimonials = [
     {
       name: "Sarah Johnson",
@@ -79,57 +78,61 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
       savings: "$12,500/month"
     }
   ];
-
   const stats = [
     { number: "45%", label: "Reduction in Downtime" },
     { number: "60%", label: "Lower Maintenance Costs" },
     { number: "500+", label: "Companies Trust Us" },
     { number: "99.9%", label: "Platform Uptime" }
   ];
-
   const pricingPlans = [
     {
-      name: "Free",
-      price: "$0",
-      period: "forever",
-      description: "Perfect for small teams getting started",
+      name: "Basic",
+      price: "$20",
+      period: "per month",
+      description: "For small operations managing up to 5 assets with AI insights",
       features: [
         "Up to 5 assets",
-        "Basic maintenance tracking",
+        "AI-powered maintenance insights",
+        "Maintenance tracking",
         "Task management",
-        "Email support"
+        "Email support",
+        "7-day free trial (credit card required)"
       ],
-      cta: "Start Free",
+      cta: "Start Free Trial",
       popular: false
     },
     {
       name: "Professional",
-      price: "$20",
+      price: "$50",
       period: "per month",
-      description: "For growing maintenance teams",
+      description: "For operations with unlimited assets and AI insights",
       features: [
         "Unlimited assets",
+        "AI-powered maintenance insights",
         "Advanced reporting",
         "Team collaboration",
         "Priority support",
-        "FMEA analysis"
+        "FMEA analysis",
+        "7-day free trial (credit card required)"
       ],
-      cta: "Get Started",
+      cta: "Start Free Trial",
       popular: true
     },
     {
-      name: "AI-Powered",
-      price: "$50",
-      period: "per month",
-      description: "Maximum efficiency with AI insights",
+      name: "Annual",
+      price: "$449",
+      period: "per year",
+      description: "Maximum savings for unlimited assets with AI insights",
       features: [
-        "Everything in Professional",
-        "AI-powered recommendations",
-        "Predictive maintenance",
-        "Advanced analytics",
-        "Custom integrations"
+        "Unlimited assets",
+        "AI-powered maintenance insights",
+        "Advanced reporting",
+        "Team collaboration",
+        "Priority support",
+        "FMEA analysis",
+        "7-day free trial (credit card required)"
       ],
-      cta: "Get Started",
+      cta: "Start Free Trial",
       popular: false
     }
   ];
@@ -141,13 +144,18 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <img 
-                src={caseyUptimeLogo} 
-                alt="Casey Uptime" 
-                className="h-12 w-auto"
-              />
+              {caseyUptimeLogo ? (
+                <img
+                  src={caseyUptimeLogo}
+                  alt="Casey Uptime"
+                  className="h-12 w-auto"
+                />
+              ) : (
+                <div className="h-12 w-auto flex items-center justify-center text-lg font-semibold">
+                  Casey Uptime
+                </div>
+              )}
             </div>
-            
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
@@ -155,10 +163,9 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               <a href="#testimonials" className="text-gray-600 hover:text-gray-900 transition-colors">Reviews</a>
               <Button variant="ghost" onClick={onLogin}>Login</Button>
               <Button onClick={onGetStarted} className="bg-blue-600 hover:bg-blue-700">
-                Get Started Free
+                Sign Up
               </Button>
             </div>
-
             {/* Mobile Menu Button */}
             <div className="md:hidden">
               <Button
@@ -170,7 +177,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               </Button>
             </div>
           </div>
-
           {/* Mobile Navigation */}
           {isMenuOpen && (
             <div className="md:hidden py-4 border-t border-gray-200">
@@ -180,31 +186,26 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
                 <a href="#testimonials" className="text-gray-600 hover:text-gray-900">Reviews</a>
                 <Button variant="ghost" onClick={onLogin} className="justify-start">Login</Button>
                 <Button onClick={onGetStarted} className="bg-blue-600 hover:bg-blue-700">
-                  Get Started Free
+                  Sign Up
                 </Button>
               </div>
             </div>
           )}
         </div>
       </nav>
-
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-                Stop Reactive Maintenance.
-                <br />
-                <span className="text-blue-600">Start Preventing Problems.</span>
+                Unify Your Assets and People with AI-Powered Insights
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 mb-8">
-                Casey Uptime helps maintenance teams reduce downtime by 45% with smart asset management, 
-                preventive scheduling, and AI-powered insights. Join 500+ companies already saving thousands.
+                Centralize your assets, track maintenance history, and connect with service providers. Use AI to prioritize tasks and identify risks with prompts like "Which asset is at greatest risk for failure?" or "What maintenance should I focus on?"
               </p>
-              
               <div className="flex flex-col sm:flex-row items-start gap-4 mb-12">
-                <Button 
+                <Button
                   onClick={onGetStarted}
                   size="lg"
                   className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200"
@@ -213,7 +214,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </div>
-
               {/* Trust Indicators */}
               <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
@@ -230,7 +230,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
                 </div>
               </div>
             </div>
-
             {/* Hero Image */}
             <div className="relative">
               <div className="rounded-2xl overflow-hidden shadow-2xl">
@@ -253,7 +252,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </div>
         </div>
       </section>
-
       {/* Stats Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -267,7 +265,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </div>
         </div>
       </section>
-
       {/* Problem/Solution Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -331,7 +328,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </div>
         </div>
       </section>
-
       {/* Features Section */}
       <section id="features" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -343,7 +339,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               Powerful features designed by maintenance professionals, for maintenance professionals.
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <Card key={index} className="p-6 shadow-lg hover:shadow-xl transition-shadow duration-200 border-0">
@@ -369,7 +364,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </div>
         </div>
       </section>
-
       {/* Social Proof Section */}
       <section className="py-16 bg-gradient-to-r from-blue-600 to-purple-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -379,7 +373,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
                 Join the Maintenance Revolution
               </h2>
               <p className="text-xl mb-8 opacity-90">
-                Thousands of maintenance professionals trust Casey Uptime to keep their operations running smoothly. 
+                Maintenance professionals trust Casey Uptime to keep their operations running smoothly.
                 From small facilities to enterprise operations, we're the platform teams choose for success.
               </p>
               <div className="flex items-center gap-8">
@@ -409,7 +403,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </div>
         </div>
       </section>
-
       {/* Testimonials Section */}
       <section id="testimonials" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -421,7 +414,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               See how companies like yours are transforming their maintenance operations
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
               <Card key={index} className="p-6 shadow-lg border-0 bg-white">
@@ -451,7 +443,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </div>
         </div>
       </section>
-
       {/* Pricing Section */}
       <section id="pricing" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -460,15 +451,14 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               Choose Your Maintenance Success Plan
             </h2>
             <p className="text-xl text-gray-600">
-              Start with our free plan, upgrade when you're ready. Test all features risk-free.
+              7-Day Free Trial, Cancel at any time. Test all features risk-free.
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricingPlans.map((plan, index) => (
               <Card key={index} className={`p-8 shadow-lg border-2 relative ${
-                plan.popular 
-                  ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50' 
+                plan.popular
+                  ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50'
                   : 'border-gray-200 bg-white'
               }`}>
                 {plan.popular && (
@@ -493,11 +483,11 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
                       </li>
                     ))}
                   </ul>
-                  <Button 
+                  <Button
                     onClick={onGetStarted}
                     className={`w-full py-3 ${
-                      plan.popular 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                      plan.popular
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
                         : 'bg-gray-900 hover:bg-gray-800 text-white'
                     }`}
                   >
@@ -507,19 +497,17 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               </Card>
             ))}
           </div>
-
           <div className="text-center mt-12">
             <p className="text-gray-600 mb-4">All plans include:</p>
             <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600">
               <span>✓ Email & chat support</span>
               <span>✓ 99.9% uptime SLA</span>
-              <span>✓ Data export & backups</span>
+              <span>✓ AI Language Model</span>
               <span>✓ SSL security</span>
             </div>
           </div>
         </div>
       </section>
-
       {/* Final CTA Section */}
       <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-700 text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -527,10 +515,10 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
             Ready to Transform Your Maintenance Operations?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Join 500+ companies already saving thousands with smarter maintenance management.
-            Start your free account today - no credit card required.
+            Join companies already saving thousands with smarter maintenance management.
+            Start your free account today.
           </p>
-          <Button 
+          <Button
             onClick={onGetStarted}
             size="lg"
             className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-medium shadow-xl"
@@ -543,18 +531,23 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </p>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center mb-4">
-                <img 
-                  src={caseyUptimeLogo} 
-                  alt="Casey Uptime" 
-                  className="h-10 w-auto filter brightness-0 invert"
-                />
+                {caseyUptimeLogo ? (
+                  <img
+                    src={caseyUptimeLogo}
+                    alt="Casey Uptime"
+                    className="h-10 w-auto filter brightness-0 invert"
+                  />
+                ) : (
+                  <div className="h-10 w-auto flex items-center justify-center text-lg font-semibold">
+                    Casey Uptime
+                  </div>
+                )}
               </div>
               <p className="text-gray-400">
                 Modern maintenance management for forward-thinking teams.
@@ -589,7 +582,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Casey Uptime. All rights reserved.</p>
+            <p>&copy; 2025 Casey Uptime. All rights reserved.</p>
           </div>
         </div>
       </footer>

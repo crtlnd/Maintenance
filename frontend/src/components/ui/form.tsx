@@ -1,8 +1,7 @@
 "use client";
-
-import * as React from "react";
-import * as LabelPrimitive from "@radix-ui/react-label@2.1.2";
-import { Slot } from "@radix-ui/react-slot@1.1.2";
+import React from "react";
+import { Root as LabelPrimitive } from "@radix-ui/react-label";
+import { Slot } from "@radix-ui/react-slot";
 import {
   Controller,
   FormProvider,
@@ -11,8 +10,7 @@ import {
   type ControllerProps,
   type FieldPath,
   type FieldValues,
-} from "react-hook-form@7.55.0";
-
+} from "react-hook-form";
 import { cn } from "./utils";
 import { Label } from "./label";
 
@@ -26,7 +24,7 @@ type FormFieldContextValue<
 };
 
 const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue,
+  {} as FormFieldContextValue
 );
 
 const FormField = <
@@ -70,12 +68,11 @@ type FormItemContextValue = {
 };
 
 const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue,
+  {} as FormItemContextValue
 );
 
 function FormItem({ className, ...props }: React.ComponentProps<"div">) {
   const id = React.useId();
-
   return (
     <FormItemContext.Provider value={{ id }}>
       <div
@@ -87,12 +84,8 @@ function FormItem({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function FormLabel({
-  className,
-  ...props
-}: React.ComponentProps<typeof LabelPrimitive.Root>) {
+function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPrimitive>) {
   const { error, formItemId } = useFormField();
-
   return (
     <Label
       data-slot="form-label"
@@ -105,9 +98,7 @@ function FormLabel({
 }
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
-  const { error, formItemId, formDescriptionId, formMessageId } =
-    useFormField();
-
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
   return (
     <Slot
       data-slot="form-control"
@@ -125,7 +116,6 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
 
 function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
   const { formDescriptionId } = useFormField();
-
   return (
     <p
       data-slot="form-description"

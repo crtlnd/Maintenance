@@ -1,36 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, Settings } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Separator } from '../ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { Asset, FMEAEntry, MaintenanceTask } from '../../types';
 import { getConditionColor } from '../../utils/helpers';
 import { AddAssetDialog } from '../dialogs/AddAssetDialog';
 import { EditAssetDialog } from '../dialogs/EditAssetDialog';
 import { QuickAddTaskDialog } from '../dialogs/QuickAddTaskDialog';
 
-export function AssetsView({ 
-  assets, 
-  onAddAsset, 
-  onSelectAsset,
-  onAddFMEA,
-  onAddMaintenanceTask,
-  onAddSingleMaintenanceTask,
-  onEditAsset
-}: { 
-  assets: Asset[]; 
+interface AssetsViewProps {
+  assets: Asset[];
   onAddAsset: (asset: Omit<Asset, 'id'>) => number;
   onSelectAsset: (assetId: number) => void;
   onAddFMEA: (fmea: Omit<FMEAEntry, 'id'>[]) => void;
   onAddMaintenanceTask: (tasks: Omit<MaintenanceTask, 'id'>[]) => void;
   onAddSingleMaintenanceTask?: (task: Omit<MaintenanceTask, 'id'>) => void;
   onEditAsset?: (asset: Asset) => void;
-}) {
+}
+
+function AssetsView({
+  assets,
+  onAddAsset,
+  onSelectAsset,
+  onAddFMEA,
+  onAddMaintenanceTask,
+  onAddSingleMaintenanceTask,
+  onEditAsset
+}: AssetsViewProps) {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
+  useEffect(() => {
+    console.log('AssetsView props:', { assets, isArray: Array.isArray(assets) });
+  }, [assets]);
+
   const handleEditClick = (event: React.MouseEvent, asset: Asset) => {
-    event.stopPropagation(); // Prevent card click
+    event.stopPropagation();
     setEditingAsset(asset);
   };
 
@@ -42,17 +48,17 @@ export function AssetsView({
   };
 
   return (
-    <div className="flex gap-8 p-8 min-h-screen">
+    <div className="flex gap-8 p-8">
       <div className="flex-1 space-y-8">
         <div className="flex justify-between items-center">
           <h2>Assets</h2>
           <div className="flex gap-2">
-            <AddAssetDialog 
-              onAddAsset={onAddAsset} 
+            <AddAssetDialog
+              onAddAsset={onAddAsset}
               currentAssetCount={assets.length}
             />
             {onAddSingleMaintenanceTask && (
-              <QuickAddTaskDialog 
+              <QuickAddTaskDialog
                 assets={assets}
                 onAddMaintenanceTask={onAddSingleMaintenanceTask}
                 triggerVariant="default"
@@ -60,11 +66,10 @@ export function AssetsView({
             )}
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {assets.map((asset) => (
-            <Card 
-              key={asset.id} 
+            <Card
+              key={asset.id}
               className="hover:shadow-md transition-shadow cursor-pointer group"
               onClick={() => onSelectAsset(asset.id)}
             >
@@ -110,11 +115,10 @@ export function AssetsView({
                   </div>
                   <div className="space-y-1">
                     <span className="text-muted-foreground">Hours:</span>
-                    <p>{asset.operatingHours.toLocaleString()}</p>
+                    <p>{asset.operatingHours ? asset.operatingHours.toLocaleString() : 'N/A'}</p>
                   </div>
                 </div>
-                
-                {asset.specifications.power && (
+                {asset.specifications?.power && (
                   <div className="pt-3 border-t">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Power:</span>
@@ -122,7 +126,6 @@ export function AssetsView({
                     </div>
                   </div>
                 )}
-
                 <div className="pt-3 border-t">
                   <p className="text-sm text-muted-foreground">
                     Last Maintenance: <span className="font-medium">{asset.lastMaintenance}</span>
@@ -133,7 +136,6 @@ export function AssetsView({
           ))}
         </div>
       </div>
-
       <div className="w-80 flex-shrink-0">
         <Card>
           <CardHeader>
@@ -152,9 +154,7 @@ export function AssetsView({
                 <p className="text-sm text-muted-foreground mt-1">Good Condition</p>
               </div>
             </div>
-
             <Separator />
-
             <div className="space-y-3">
               <h4>Asset Types</h4>
               {Object.entries(
@@ -175,3 +175,5 @@ export function AssetsView({
     </div>
   );
 }
+
+export default AssetsView;

@@ -1,3 +1,4 @@
+// frontend/src/dialogs/AddAssetDialog.tsx
 import React, { useState } from 'react';
 import { Plus, Sparkles, AlertCircle, Crown } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
@@ -6,6 +7,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';
 import { useAuth } from '../../utils/auth';
+import { useNavigate } from 'react-router-dom';
 
 interface AddAssetDialogProps {
   onAddAsset: (asset: any) => number;
@@ -14,23 +16,21 @@ interface AddAssetDialogProps {
 
 export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialogProps) {
   const { canAddAsset, getAssetLimit } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     modelNumber: '',
-    serialNumber: ''
+    serialNumber: '',
   });
-
   const canAdd = canAddAsset(currentAssetCount);
   const assetLimit = getAssetLimit();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canAdd) return;
-
     setIsLoading(true);
-    
     const newAsset = {
       name: formData.name,
       modelNumber: formData.modelNumber,
@@ -43,12 +43,9 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialog
       installDate: '2023-06-01',
       operatingHours: Math.floor(Math.random() * 5000) + 1000,
       specifications: {},
-      maintenanceSchedule: {}
+      maintenanceSchedule: {},
     };
-
-    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
-
     onAddAsset(newAsset);
     setFormData({ name: '', modelNumber: '', serialNumber: '' });
     setOpen(false);
@@ -58,32 +55,47 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialog
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={!canAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Asset
+        <Button
+          variant="default"
+          disabled={canAdd && isLoading}
+          onClick={canAdd ? undefined : () => navigate('/account')}
+        >
+          {canAdd ? (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Asset
+            </>
+          ) : (
+            <>
+              <Crown className="h-4 w-4 mr-2" />
+              Asset limit reached for Basic Plan, click to upgrade
+            </>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add New Asset</DialogTitle>
           <DialogDescription>
-            {canAdd 
-              ? "Add a new asset to your maintenance management system. Use the AI button to auto-populate specifications."
-              : `You've reached your asset limit of ${assetLimit}. Upgrade your plan to add more assets.`
-            }
+            {canAdd
+              ? 'Add a new asset to your maintenance management system. Use the AI button to auto-populate specifications.'
+              : `You've reached your plan's limit of ${assetLimit}. Upgrade your plan to add more assets.`}
           </DialogDescription>
         </DialogHeader>
-
         {!canAdd && (
           <Alert>
             <Crown className="h-4 w-4" />
             <AlertDescription>
-              You've reached your plan's limit of {assetLimit} assets. 
-              Upgrade to add more assets and unlock additional features.
+              You've reached your plan's limit of {assetLimit} assets.{' '}
+              <span
+                className="text-blue-600 cursor-pointer"
+                onClick={() => navigate('/account')}
+              >
+                Upgrade to add more assets and unlock additional features.
+              </span>
             </AlertDescription>
           </Alert>
         )}
-
         {canAdd && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -96,7 +108,6 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialog
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="model-number">Model Number *</Label>
               <Input
@@ -107,7 +118,6 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialog
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="serial-number">Serial Number *</Label>
               <Input
@@ -118,14 +128,12 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialog
                 required
               />
             </div>
-
             <Alert className="bg-blue-50 border-blue-200">
               <Sparkles className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
                 After adding the asset, use the "Fill all known details with AI" button to automatically populate specifications and maintenance schedules.
               </AlertDescription>
             </Alert>
-
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
@@ -136,7 +144,6 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialog
             </div>
           </form>
         )}
-
         {assetLimit !== 'unlimited' && (
           <div className="pt-4 border-t">
             <div className="flex justify-between text-sm text-muted-foreground">
@@ -144,12 +151,12 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialog
               <span>{currentAssetCount} of {assetLimit}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-              <div 
+              <div
                 className={`h-2 rounded-full ${
                   currentAssetCount >= (assetLimit as number) ? 'bg-destructive' : 'bg-primary'
                 }`}
-                style={{ 
-                  width: `${Math.min((currentAssetCount / (assetLimit as number)) * 100, 100)}%` 
+                style={{
+                  width: `${Math.min((currentAssetCount / (assetLimit as number)) * 100, 100)}%`,
                 }}
               ></div>
             </div>

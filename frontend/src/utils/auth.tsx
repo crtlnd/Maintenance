@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthState, User, NotificationPreferences, SubscriptionPlan, ServiceProviderPlan, TeamMember, Organization, UserType, ServiceProviderProfile } from '../types';
+import { AuthState, User, NotificationPreferences, SubscriptionPlan, ServiceProviderPlan, UserType } from '../types';
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, signal?: AbortSignal) => Promise<boolean>;
   signup: (userData: {
     email: string;
     password: string;
@@ -10,10 +10,12 @@ interface AuthContextType extends AuthState {
     lastName: string;
     company: string;
     role: string;
+    username: string;
+    consent: boolean;
     userType?: UserType;
     plan?: ServiceProviderPlan | SubscriptionPlan;
     businessInfo?: any;
-  }) => Promise<boolean>;
+  }, signal?: AbortSignal) => Promise<{ success: boolean; token?: string }>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => void;
   updateNotificationPreferences: (preferences: NotificationPreferences) => void;
@@ -21,7 +23,7 @@ interface AuthContextType extends AuthState {
   canAddTeamMember: () => boolean;
   getAssetLimit: () => number | 'unlimited';
   getSeatLimit: () => number | 'unlimited';
-  upgradePlan: (plan: SubscriptionPlan | ServiceProviderPlan) => Promise<boolean>;
+  upgradePlan: (plan: SubscriptionPlan | ServiceProviderPlan, signal?: AbortSignal) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -46,249 +48,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
 
-  // Load user from localStorage on mount
   useEffect(() => {
     const savedUser = localStorage.getItem('maintenanceManager_user');
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser);
-        setAuthState({
-          isAuthenticated: true,
-          user,
-          loading: false,
-        });
+        if (user && typeof user === 'object') {
+          setAuthState({
+            isAuthenticated: true,
+            user,
+            loading: false,
+          });
+        } else {
+          throw new Error('Invalid user data');
+        }
       } catch (error) {
         console.error('Error loading saved user:', error);
         localStorage.removeItem('maintenanceManager_user');
-        setAuthState(prev => ({ ...prev, loading: false }));
+        localStorage.removeItem('token');
+        setAuthState({ isAuthenticated: false, user: null, loading: false });
       }
     } else {
-      setAuthState(prev => ({ ...prev, loading: false }));
+      setAuthState({ isAuthenticated: false, user: null, loading: false });
     }
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock authentication - in real app, this would validate against a backend
-    if (email && password.length >= 6) {
-      let user: User;
-
-      // Create admin user for testing
-      if (email === 'admin@maintenancemanager.com') {
-        user = {
-          id: 'admin_001',
-          email,
-          firstName: 'Admin',
-          lastName: 'User',
-          role: 'System Administrator',
-          company: 'Maintenance Manager Inc.',
-          department: 'Administration',
-          phone: '+1 (555) 999-0000',
-          userType: 'admin',
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString(),
-          notificationPreferences: defaultNotificationPreferences,
-          subscription: {
-            plan: 'ai-powered',
-            status: 'active',
-            assetLimit: 'unlimited',
-            seatLimit: 'unlimited',
-          },
-        };
-      } else if (email === 'demo@ai-powered.com') {
-        // Special demo user with AI-powered plan for testing
-        user = {
-          id: Math.random().toString(36).substr(2, 9),
-          email,
-          firstName: 'John',
-          lastName: 'Doe',
-          role: 'Maintenance Manager',
-          company: 'Industrial Solutions Inc.',
-          department: 'Maintenance',
-          phone: '+1 (555) 123-4567',
-          userType: 'customer',
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString(),
-          notificationPreferences: defaultNotificationPreferences,
-          subscription: {
-            plan: 'ai-powered',
-            status: 'active',
-            assetLimit: 'unlimited',
-            seatLimit: 1,
-          },
-        };
-      } else {
-        // Default demo user starts with free plan to demonstrate upgrade flow
-        user = {
-          id: Math.random().toString(36).substr(2, 9),
-          email,
-          firstName: 'John',
-          lastName: 'Doe',
-          role: 'Maintenance Manager',
-          company: 'Industrial Solutions Inc.',
-          department: 'Maintenance',
-          phone: '+1 (555) 123-4567',
-          userType: 'customer',
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString(),
-          notificationPreferences: defaultNotificationPreferences,
-          subscription: {
-            plan: 'free',
-            status: 'active',
-            assetLimit: 5,
-            seatLimit: 1,
-          },
-        };
+  const login = async (email: string, password: string, signal?: AbortSignal): Promise<boolean> => {
+    try {
+      const response = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        signal,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Login failed:', errorData.error || 'Unknown error');
+        return false;
       }
-
+      const { token, user } = await response.json();
+      if (!token || !user) {
+        console.error('Invalid login response');
+        return false;
+      }
+      localStorage.setItem('token', token);
+      localStorage.setItem('maintenanceManager_user', JSON.stringify(user));
       setAuthState({
         isAuthenticated: true,
         user,
         loading: false,
       });
-
-      localStorage.setItem('maintenanceManager_user', JSON.stringify(user));
       return true;
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Login error:', error.message);
+      }
+      return false;
     }
-    
-    return false;
   };
 
-  const signup = async (userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    company: string;
-    role: string;
-    userType?: UserType;
-    plan?: ServiceProviderPlan | SubscriptionPlan;
-    businessInfo?: any;
-  }): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const userType = userData.userType || 'customer';
-    let user: User;
-
-    if (userType === 'service_provider') {
-      const selectedPlan = (userData.plan as ServiceProviderPlan) || 'verified';
-      
-      // Set features based on selected plan
-      const serviceProviderFeatures = {
-        verified: { isVerified: true, canDirectMessage: false, isPromoted: false },
-        premium: { isVerified: true, canDirectMessage: true, isPromoted: false },
-        promoted: { isVerified: true, canDirectMessage: true, isPromoted: true },
-      };
-
-      const features = serviceProviderFeatures[selectedPlan];
-
-      const serviceProviderProfile: ServiceProviderProfile = {
-        id: Math.random().toString(36).substr(2, 9),
-        businessName: userData.company,
-        owner: userData.email,
-        subscription: {
-          plan: selectedPlan,
-          status: 'active',
-        },
-        businessInfo: {
-          type: userData.businessInfo?.type || 'independent',
-          services: userData.businessInfo?.services || [],
-          specializations: [],
-          address: userData.businessInfo?.address || '',
-          phone: userData.businessInfo?.phone || '',
-          website: userData.businessInfo?.website,
-          certifications: userData.businessInfo?.certifications || [],
-          responseTime: '24 hours',
-          availability: 'business-hours',
-          pricing: 'mid-range',
-        },
-        ...features,
-      };
-
-      user = {
-        id: Math.random().toString(36).substr(2, 9),
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        role: userData.role,
-        company: userData.company,
-        userType: 'service_provider',
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        notificationPreferences: defaultNotificationPreferences,
-        serviceProviderProfile,
-        subscription: {
-          plan: selectedPlan,
-          status: 'active',
-        },
-      };
-    } else {
-      const selectedPlan = (userData.plan as SubscriptionPlan) || 'free';
-      
-      // Set limits based on selected plan
-      let assetLimit: number | 'unlimited';
-      let seatLimit: number | 'unlimited';
-
-      switch (selectedPlan) {
-        case 'pro':
-          assetLimit = 'unlimited';
-          seatLimit = 1;
-          break;
-        case 'ai-powered':
-          assetLimit = 'unlimited';
-          seatLimit = 1;
-          break;
-        default:
-          assetLimit = 5;
-          seatLimit = 1;
+  const signup = async (
+    userData: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      company: string;
+      role: string;
+      username: string;
+      consent: boolean;
+      userType?: UserType;
+      plan?: ServiceProviderPlan | SubscriptionPlan;
+      businessInfo?: any;
+    },
+    signal?: AbortSignal
+  ): Promise<{ success: boolean; token?: string }> => {
+    try {
+      const response = await fetch('http://localhost:3000/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+        signal,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Signup failed:', errorData.error || 'Unknown error');
+        return { success: false };
       }
-
-      const organization: Organization = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: userData.company,
-        owner: userData.email,
-        members: [],
-        subscription: {
-          plan: selectedPlan,
-          status: 'active',
-          assetLimit,
-          seatLimit,
-          usedSeats: 1,
-        }
-      };
-
-      user = {
-        id: Math.random().toString(36).substr(2, 9),
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        role: userData.role,
-        company: userData.company,
-        userType: 'customer',
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        notificationPreferences: defaultNotificationPreferences,
-        organization,
-        subscription: {
-          plan: selectedPlan,
-          status: 'active',
-          assetLimit,
-          seatLimit,
-        },
-      };
+      const { token, user } = await response.json();
+      if (!token || !user) {
+        console.error('Invalid signup response');
+        return { success: false };
+      }
+      localStorage.setItem('token', token);
+      localStorage.setItem('maintenanceManager_user', JSON.stringify(user));
+      setAuthState({
+        isAuthenticated: true,
+        user,
+        loading: false,
+      });
+      return { success: true, token };
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Signup error:', error.message);
+      }
+      return { success: false };
     }
-
-    setAuthState({
-      isAuthenticated: true,
-      user,
-      loading: false,
-    });
-
-    localStorage.setItem('maintenanceManager_user', JSON.stringify(user));
-    return true;
   };
 
   const logout = () => {
@@ -297,12 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: null,
       loading: false,
     });
+    localStorage.removeItem('token');
     localStorage.removeItem('maintenanceManager_user');
   };
 
   const updateProfile = (updates: Partial<User>) => {
     if (!authState.user) return;
-
     const updatedUser = { ...authState.user, ...updates };
     setAuthState(prev => ({
       ...prev,
@@ -313,7 +178,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateNotificationPreferences = (preferences: NotificationPreferences) => {
     if (!authState.user) return;
-
     const updatedUser = {
       ...authState.user,
       notificationPreferences: preferences,
@@ -327,106 +191,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const canAddAsset = (currentAssetCount: number): boolean => {
     if (!authState.user || authState.user.userType === 'service_provider') return false;
-    const limit = authState.user.subscription.assetLimit;
-    return limit === 'unlimited' || currentAssetCount < (limit as number);
+    return authState.user.subscriptionTier !== 'Basic' || currentAssetCount < 5;
   };
 
   const canAddTeamMember = (): boolean => {
     if (!authState.user || authState.user.userType === 'service_provider') return false;
-    const limit = authState.user.subscription.seatLimit;
-    const used = authState.user.organization?.subscription.usedSeats || 1;
-    return limit === 'unlimited' || used < (limit as number);
+    return authState.user.subscriptionTier !== 'Basic';
   };
 
   const getAssetLimit = (): number | 'unlimited' => {
     if (!authState.user || authState.user.userType === 'service_provider') return 0;
-    return authState.user.subscription.assetLimit || 5;
+    return authState.user.subscriptionTier === 'Basic' ? 5 : 'unlimited';
   };
 
   const getSeatLimit = (): number | 'unlimited' => {
     if (!authState.user || authState.user.userType === 'service_provider') return 0;
-    return authState.user.subscription.seatLimit || 1;
+    return authState.user.subscriptionTier === 'Basic' ? 1 : 'unlimited';
   };
 
-  const upgradePlan = async (plan: SubscriptionPlan | ServiceProviderPlan): Promise<boolean> => {
+  const upgradePlan = async (plan: SubscriptionPlan | ServiceProviderPlan, signal?: AbortSignal): Promise<boolean> => {
     if (!authState.user) return false;
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    let updatedUser = { ...authState.user };
-
-    if (authState.user.userType === 'service_provider') {
-      // Handle service provider plan upgrades
-      const serviceProviderFeatures = {
-        verified: { isVerified: true, canDirectMessage: false, isPromoted: false },
-        premium: { isVerified: true, canDirectMessage: true, isPromoted: false },
-        promoted: { isVerified: true, canDirectMessage: true, isPromoted: true },
-      };
-
-      const features = serviceProviderFeatures[plan as ServiceProviderPlan] || serviceProviderFeatures.verified;
-
-      updatedUser = {
-        ...authState.user,
-        subscription: {
-          ...authState.user.subscription,
-          plan,
+    try {
+      const response = await fetch('http://localhost:3000/api/users/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
         },
-        serviceProviderProfile: authState.user.serviceProviderProfile ? {
-          ...authState.user.serviceProviderProfile,
-          subscription: {
-            ...authState.user.serviceProviderProfile.subscription,
-            plan: plan as ServiceProviderPlan,
-          },
-          ...features,
-        } : undefined
-      };
-    } else {
-      // Handle customer plan upgrades
-      let assetLimit: number | 'unlimited';
-      let seatLimit: number | 'unlimited';
-
-      switch (plan) {
-        case 'pro':
-          assetLimit = 'unlimited';
-          seatLimit = 1;
-          break;
-        case 'ai-powered':
-          assetLimit = 'unlimited';
-          seatLimit = 1;
-          break;
-        default:
-          assetLimit = 5;
-          seatLimit = 1;
+        body: JSON.stringify({ plan }),
+        signal,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Upgrade failed:', errorData.error || 'Unknown error');
+        return false;
       }
-
-      updatedUser = {
-        ...authState.user,
-        subscription: {
-          ...authState.user.subscription,
-          plan,
-          assetLimit,
-          seatLimit,
-        },
-        organization: authState.user.organization ? {
-          ...authState.user.organization,
-          subscription: {
-            ...authState.user.organization.subscription,
-            plan: plan as SubscriptionPlan,
-            assetLimit,
-            seatLimit,
-          }
-        } : undefined
-      };
+      const { url } = await response.json();
+      if (!url) {
+        console.error('Invalid upgrade response');
+        return false;
+      }
+      window.location.href = url;
+      return true;
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Upgrade plan error:', error.message);
+      }
+      return false;
     }
-
-    setAuthState(prev => ({
-      ...prev,
-      user: updatedUser,
-    }));
-
-    localStorage.setItem('maintenanceManager_user', JSON.stringify(updatedUser));
-    return true;
   };
 
   return (

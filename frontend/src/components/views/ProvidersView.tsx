@@ -1,24 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Star, MapPin, Phone, Users, Check, Map, List, Wrench, Zap, Cog } from 'lucide-react';
+import { Search, Star, MapPin, Phone, Check, Map, List, Users, Wrench, Zap, Cog } from 'lucide-react';
 import axios from 'axios';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ServiceProvider } from '../../types';
-import { getProviderTypeColor, getPricingColor, getProviderTypeIcon } from '../../utils/helpers';
+import { getProviderTypeColor, getPricingColor } from '../../utils/helpers';
 import { ContactProviderDialog } from '../dialogs/ContactProviderDialog';
-
-const SERVICE_TYPE_FILTERS = [
-  { key: 'all', label: 'All Services', icon: Users, count: 0 },
-  { key: 'mechanics', label: 'Mechanics', icon: Wrench, count: 0 },
-  { key: 'welders', label: 'Welders', icon: Zap, count: 0 },
-  { key: 'engineers', label: 'Engineers', icon: Cog, count: 0 },
-  { key: 'electrical', label: 'Electrical', icon: Zap, count: 0 },
-  { key: 'hydraulics', label: 'Hydraulics', icon: Wrench, count: 0 },
-];
 
 interface FormData {
   lat: string;
@@ -27,10 +18,31 @@ interface FormData {
   serviceType: string;
 }
 
+interface ProvidersViewProps {
+  serviceProviders: ServiceProvider[];
+  setServiceProviders: React.Dispatch<React.SetStateAction<ServiceProvider[]>>;
+}
+
+const SERVICE_TYPE_FILTERS = [
+  { key: 'all', label: 'All Services', icon: 'Users', count: 0 },
+  { key: 'mechanics', label: 'Mechanics', icon: 'Wrench', count: 0 },
+  { key: 'welders', label: 'Welders', icon: 'Zap', count: 0 },
+  { key: 'engineers', label: 'Engineers', icon: 'Cog', count: 0 },
+  { key: 'electrical', label: 'Electrical', icon: 'Zap', count: 0 },
+  { key: 'hydraulics', label: 'Hydraulics', icon: 'Wrench', count: 0 },
+];
+
+const iconMap = {
+  Users: Users,
+  Wrench: Wrench,
+  Zap: Zap,
+  Cog: Cog,
+};
+
 function ServiceProviderMap({ providers, selectedServiceTypes }: { providers: ServiceProvider[]; selectedServiceTypes: string[] }) {
-  const mapRef = useRef<HTMLDivElement>(null); // Ref for map container
-  const googleMap = useRef<google.maps.Map | null>(null); // Ref for Google Map instance
-  const markers = useRef<google.maps.Marker[]>([]); // Store markers to manage updates
+  const mapRef = useRef<HTMLDivElement>(null);
+  const googleMap = useRef<google.maps.Map | null>(null);
+  const markers = useRef<google.maps.Marker[]>([]);
 
   const filteredProviders = providers.filter((provider) => {
     if (selectedServiceTypes.includes('all') || selectedServiceTypes.length === 0) {
@@ -97,10 +109,8 @@ function ServiceProviderMap({ providers, selectedServiceTypes }: { providers: Se
     });
   });
 
-  // Initialize and update Google Map
   useEffect(() => {
     if (mapRef.current && !googleMap.current) {
-      // Initialize map centered on Midland, TX
       googleMap.current = new google.maps.Map(mapRef.current, {
         center: { lat: 31.9973, lng: -102.0779 },
         zoom: 10,
@@ -108,20 +118,15 @@ function ServiceProviderMap({ providers, selectedServiceTypes }: { providers: Se
         streetViewControl: false,
       });
     }
-
-    // Clear existing markers
     markers.current.forEach((marker) => marker.setMap(null));
     markers.current = [];
 
-    // Add markers for filtered providers
     filteredProviders.forEach((provider) => {
       const marker = new google.maps.Marker({
         position: { lat: provider.location.coordinates.coordinates[1], lng: provider.location.coordinates.coordinates[0] },
         map: googleMap.current,
         title: provider.name,
       });
-
-      // Add info window for marker
       const infoWindow = new google.maps.InfoWindow({
         content: `
           <div style="padding: 10px; max-width: 200px;">
@@ -133,15 +138,12 @@ function ServiceProviderMap({ providers, selectedServiceTypes }: { providers: Se
           </div>
         `,
       });
-
       marker.addListener('click', () => {
         infoWindow.open(googleMap.current, marker);
       });
-
       markers.current.push(marker);
     });
 
-    // Adjust map bounds to fit all markers
     if (filteredProviders.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       filteredProviders.forEach((provider) => {
@@ -153,7 +155,6 @@ function ServiceProviderMap({ providers, selectedServiceTypes }: { providers: Se
       googleMap.current?.fitBounds(bounds);
     }
 
-    // Cleanup on unmount
     return () => {
       markers.current.forEach((marker) => marker.setMap(null));
       markers.current = [];
@@ -203,7 +204,7 @@ function ServiceProviderMap({ providers, selectedServiceTypes }: { providers: Se
   );
 }
 
-export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
+function ProvidersView({ serviceProviders, setServiceProviders }: ProvidersViewProps) {
   const [fetchedProviders, setFetchedProviders] = useState<ServiceProvider[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -237,6 +238,7 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
       });
       console.log('Providers fetched:', response.data);
       setFetchedProviders(response.data || []);
+      setServiceProviders(response.data || []);
     } catch (err: any) {
       console.error('Error fetching providers:', err.message);
       setError(err.response?.data?.error || 'Failed to load providers. Please try again.');
@@ -319,7 +321,7 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
   }, [fetchedProviders]);
 
   const filteredProviders = useMemo(() => {
-    const data = fetchedProviders.length > 0 ? fetchedProviders : providers;
+    const data = fetchedProviders.length > 0 ? fetchedProviders : serviceProviders;
     return data.filter((provider) => {
       const matchesSearch =
         provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -391,7 +393,7 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
         });
       return matchesSearch && matchesType && matchesPricing && matchesDistance && matchesServiceType;
     });
-  }, [fetchedProviders, providers, searchTerm, selectedType, selectedPricing, maxDistance, selectedServiceTypes]);
+  }, [fetchedProviders, serviceProviders, searchTerm, selectedType, selectedPricing, maxDistance, selectedServiceTypes]);
 
   const stats = useMemo(() => {
     return {
@@ -498,7 +500,7 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
               <h4 className="font-medium mb-3">Filter by Service Type</h4>
               <div className="flex flex-wrap gap-2">
                 {SERVICE_TYPE_FILTERS.map((filter) => {
-                  const IconComponent = filter.icon;
+                  const IconComponent = iconMap[filter.icon as keyof typeof iconMap];
                   const isSelected = selectedServiceTypes.includes(filter.key);
                   const count = serviceTypeCounts[filter.key] || 0;
                   return (
@@ -610,7 +612,7 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
             <div className="pt-4 border-t">
               <div className="flex flex-wrap gap-2">
                 {SERVICE_TYPE_FILTERS.map((filter) => {
-                  const IconComponent = filter.icon;
+                  const IconComponent = iconMap[filter.icon as keyof typeof iconMap];
                   const isSelected = selectedServiceTypes.includes(filter.key);
                   const count = serviceTypeCounts[filter.key] || 0;
                   return (
@@ -652,140 +654,139 @@ export function ProvidersView({ providers }: { providers: ServiceProvider[] }) {
               </CardContent>
             </Card>
           ) : (
-            filteredProviders.map((provider) => {
-              const IconComponent = getProviderTypeIcon(provider.type);
-              return (
-                <Card key={provider.placeId} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-muted rounded-lg">
-                          <IconComponent className="h-5 w-5" />
-                        </div>
-                        <div>
-                          {provider.verified && (
-                            <Badge className="bg-blue-600 text-white border-blue-700 shadow-sm mb-2 inline-flex items-center">
-                              <Check className="h-3 w-3 mr-1" />
-                              Verified Provider
-                            </Badge>
-                          )}
-                          <CardTitle className="text-lg">{provider.name}</CardTitle>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className={getProviderTypeColor(provider.type)}>
-                              {provider.type}
-                            </Badge>
-                            <Badge variant="secondary" className={getPricingColor(provider.pricing)}>
-                              {provider.pricing}
-                            </Badge>
-                            {provider.subscriptionTier !== 'none' && (
-                              <Badge variant="secondary" className="bg-yellow-600 text-white">
-                                {provider.subscriptionTier.charAt(0).toUpperCase() + provider.subscriptionTier.slice(1)}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+            filteredProviders.map((provider) => (
+              <Card key={provider.placeId} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-muted rounded-lg">
+                        <Star className="h-5 w-5" />
                       </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-current text-yellow-500" />
-                          <span>{provider.rating}</span>
-                          <span className="text-muted-foreground">({provider.reviewCount})</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <MapPin className="h-3 w-3" />
-                          {provider.distance || 'N/A'} mi away
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h5 className="font-medium mb-2">Services Offered</h5>
-                      <div className="flex flex-wrap gap-1">
-                        {provider.services.slice(0, 4).map((service, index) => (
-                          service && (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {service}
-                            </Badge>
-                          )
-                        ))}
-                        {provider.services.length > 4 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{provider.services.length - 4} more
+                      <div>
+                        {provider.verified && (
+                          <Badge className="bg-blue-600 text-white border-blue-700 shadow-sm mb-2 inline-flex items-center">
+                            <Check className="h-3 w-3 mr-1" />
+                            Verified Provider
                           </Badge>
                         )}
-                      </div>
-                    </div>
-                    {provider.specializations.length > 0 && (
-                      <div>
-                        <h5 className="font-medium mb-2">Specializations</h5>
-                        <div className="flex flex-wrap gap-1">
-                          {provider.specializations.map((spec, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {spec}
+                        <CardTitle className="text-lg">{provider.name}</CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="secondary" className={getProviderTypeColor(provider.type)}>
+                            {provider.type}
+                          </Badge>
+                          <Badge variant="secondary" className={getPricingColor(provider.pricing)}>
+                            {provider.pricing}
+                          </Badge>
+                          {provider.subscriptionTier !== 'none' && (
+                            <Badge variant="secondary" className="bg-yellow-600 text-white">
+                              {provider.subscriptionTier.charAt(0).toUpperCase() + provider.subscriptionTier.slice(1)}
                             </Badge>
-                          ))}
+                          )}
                         </div>
                       </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Availability:</span>
-                        <p className="font-medium">{provider.availability}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-current text-yellow-500" />
+                        <span>{provider.rating}</span>
+                        <span className="text-muted-foreground">({provider.reviewCount})</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                        <MapPin className="h-3 w-3" />
+                        {provider.distance || 'N/A'} mi away
                       </div>
                     </div>
-                    {provider.certifications.length > 0 && (
-                      <div>
-                        <h5 className="font-medium mb-2">Certifications</h5>
-                        <div className="flex flex-wrap gap-1">
-                          {provider.certifications.map((cert, index) => (
-                            <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700">
-                              {cert}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Address:</span>
-                      <p>{provider.address}</p>
-                    </div>
-                    {provider.notes && (
-                      <div className="bg-muted p-3 rounded-lg">
-                        <p className="text-sm">{provider.notes}</p>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center pt-3 border-t">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(`tel:${provider.phone}`)}
-                        >
-                          <Phone className="h-4 w-4 mr-1" />
-                          Call
-                        </Button>
-                        {(provider.canDirectMessage || provider.subscriptionTier === 'contact' || provider.subscriptionTier === 'promoted') && (
-                          <ContactProviderDialog provider={provider} />
-                        )}
-                      </div>
-                      {provider.website && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(provider.website, '_blank')}
-                        >
-                          Visit Website
-                        </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h5 className="font-medium mb-2">Services Offered</h5>
+                    <div className="flex flex-wrap gap-1">
+                      {provider.services.slice(0, 4).map((service, index) => (
+                        service && (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {service}
+                          </Badge>
+                        )
+                      ))}
+                      {provider.services.length > 4 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{provider.services.length - 4} more
+                        </Badge>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })
+                  </div>
+                  {provider.specializations.length > 0 && (
+                    <div>
+                      <h5 className="font-medium mb-2">Specializations</h5>
+                      <div className="flex flex-wrap gap-1">
+                        {provider.specializations.map((spec, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {spec}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Availability:</span>
+                      <p className="font-medium">{provider.availability}</p>
+                    </div>
+                  </div>
+                  {provider.certifications.length > 0 && (
+                    <div>
+                      <h5 className="font-medium mb-2">Certifications</h5>
+                      <div className="flex flex-wrap gap-1">
+                        {provider.certifications.map((cert, index) => (
+                          <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700">
+                            {cert}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Address:</span>
+                    <p>{provider.address}</p>
+                  </div>
+                  {provider.notes && (
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-sm">{provider.notes}</p>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-3 border-t">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`tel:${provider.phone}`)}
+                      >
+                        <Phone className="h-4 w-4 mr-1" />
+                        Call
+                      </Button>
+                      {(provider.canDirectMessage || provider.subscriptionTier === 'contact' || provider.subscriptionTier === 'promoted') && (
+                        <ContactProviderDialog provider={provider} />
+                      )}
+                    </div>
+                    {provider.website && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(provider.website, '_blank')}
+                      >
+                        Visit Website
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
         </div>
       )}
     </div>
   );
 }
+
+export default ProvidersView;

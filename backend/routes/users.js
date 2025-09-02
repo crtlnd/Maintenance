@@ -1,7 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/user');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const router = express.Router();
 
 module.exports = () => {
@@ -22,7 +21,7 @@ module.exports = () => {
     '/profile',
     [
       body('notificationPreferences.email').optional().isBoolean().withMessage('Email preference must be a boolean'),
-      body('notificationPreferences.sms').optional().isBoolean().withMessage('SMS preference must be a boolean')
+      body('notificationPreferences.sms').optional().isBoolean().withMessage('SMS preference must be a boolean'),
     ],
     async (req, res) => {
       try {
@@ -50,7 +49,7 @@ module.exports = () => {
   router.post(
     '/subscribe',
     [
-      body('tier').isIn(['free', 'pro', 'ai-powered']).withMessage('Invalid subscription tier')
+      body('plan').isIn(['Basic', 'Professional', 'Annual']).withMessage('Invalid subscription plan'),
     ],
     async (req, res) => {
       try {
@@ -58,48 +57,33 @@ module.exports = () => {
         if (!errors.isEmpty()) {
           return res.status(400).send({ errors: errors.array() });
         }
-        const { tier } = req.body;
+        const { plan } = req.body;
         const user = await User.findOne({ id: req.auth.userId });
         if (!user) {
           return res.status(404).send({ error: 'User not found' });
         }
-        if (tier === 'free') {
-          const updatedUser = await User.findOneAndUpdate(
-            { id: req.auth.userId },
-            { $set: { subscriptionTier: 'free', stripeSubscriptionId: null } },
-            { new: true }
-          );
-          return res.send(updatedUser);
-        }
+
         const prices = {
-          pro: 'price_1RzM63Gi9H80HINUKvF3JHa7', // Replace with actual Pro Price ID ($20/month)
-          'ai-powered': 'price_1RzM7EGi9H80HINUqUNUqOcd' // Replace with actual AI-Powered Price ID ($50/month)
+          Basic: 'price_1S2E1zGi9H80HINUlSIJ5u1v', // Replace with actual Basic Price ID ($20/month)
+          Professional: 'price_1S2E2rGi9H80HINU3SVfZwFn', // Replace with actual Professional Price ID ($50/month)
+          Annual: 'price_1S2E3nGi9H80HINU7PLjhbQs', // Replace with actual Annual Price ID ($449/year)
         };
-        let customer;
-        if (user.stripeCustomerId) {
-          customer = await stripe.customers.retrieve(user.stripeCustomerId);
-        } else {
-          return res.status(400).send({ error: 'No payment method on file. Please update your account.' });
-        }
-        const subscription = await stripe.subscriptions.create({
-          customer: customer.id,
-          items: [{ price: prices[tier] }],
-          payment_behavior: 'default_incomplete',
-          expand: ['latest_invoice.payment_intent']
+
+        // Call the subscriptions endpoint to create a checkout session
+        const response = await fetch('http://localhost:3000/api/subscriptions/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priceId: prices[plan], email: user.email, plan }),
         });
-        const updatedUser = await User.findOneAndUpdate(
-          { id: req.auth.userId },
-          {
-            $set: {
-              stripeSubscriptionId: subscription.id,
-              subscriptionTier: tier
-            }
-          },
-          { new: true }
-        );
-        res.send(updatedUser);
+
+        const { url } = await response.json();
+        if (!url) {
+          return res.status(500).send({ error: 'Failed to create checkout session' });
+        }
+
+        res.send({ url }); // Frontend will redirect to this URL
       } catch (error) {
-        console.error('Error creating subscription:', error);
+        console.error('Error initiating subscription:', error);
         res.status(500).send({ error: 'Server error' });
       }
     }

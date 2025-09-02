@@ -267,7 +267,6 @@ export type User = {
     status: 'active' | 'cancelled' | 'expired' | 'trial';
     expiresAt?: string;
     assetLimit?: number | 'unlimited';
-    seatLimit?: number | 'unlimited';
   };
 };
 

@@ -1,13 +1,14 @@
+// frontend/src/components/account/ProfileSettings.tsx
 import React, { useState } from 'react';
 import { Camera, Save, User, Building, Mail, Phone, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Alert, AlertDescription } from '../ui/alert';
+import { CustomerPricingSection } from './CustomerPricingSection';
 import { useAuth } from '../../utils/auth';
 
 export function ProfileSettings() {
@@ -24,7 +25,6 @@ export function ProfileSettings() {
     company: user?.company || '',
     department: user?.department || '',
   });
-
   const roles = [
     'Maintenance Manager',
     'Maintenance Technician',
@@ -32,22 +32,17 @@ export function ProfileSettings() {
     'Operations Manager',
     'Reliability Engineer',
     'Facility Manager',
-    'Other'
+    'Other',
   ];
 
   const handleSave = async () => {
     setIsSaving(true);
     setSuccess(false);
-
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-
     updateProfile(formData);
     setIsEditing(false);
     setIsSaving(false);
     setSuccess(true);
-
-    // Hide success message after 3 seconds
     setTimeout(() => setSuccess(false), 3000);
   };
 
@@ -67,12 +62,11 @@ export function ProfileSettings() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-8">
       <div>
         <h3>Profile Settings</h3>
         <p className="text-muted-foreground">Manage your personal information and account details.</p>
       </div>
-
       {success && (
         <Alert className="border-green-200 bg-green-50">
           <AlertDescription className="text-green-800">
@@ -80,21 +74,17 @@ export function ProfileSettings() {
           </AlertDescription>
         </Alert>
       )}
-
       <Card>
         <CardHeader>
           <CardTitle>Personal Information</CardTitle>
-          <CardDescription>
-            Update your personal details and contact information.
-          </CardDescription>
+          <CardDescription>Update your personal details and contact information.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Avatar Section */}
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
               <AvatarImage src={user.avatar} />
               <AvatarFallback className="text-lg">
-                {user.firstName[0]}{user.lastName[0]}
+                {user.firstName?.[0] || ''}{user.lastName?.[0] || ''}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -102,12 +92,9 @@ export function ProfileSettings() {
                 <Camera className="h-4 w-4 mr-2" />
                 Change Photo
               </Button>
-              <p className="text-xs text-muted-foreground mt-1">
-                Photo upload coming soon
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Photo upload coming soon</p>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
@@ -122,7 +109,6 @@ export function ProfileSettings() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
               <Input
@@ -132,7 +118,6 @@ export function ProfileSettings() {
                 disabled={!isEditing}
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
@@ -147,7 +132,6 @@ export function ProfileSettings() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
               <div className="relative">
@@ -162,7 +146,6 @@ export function ProfileSettings() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="company">Company</Label>
               <div className="relative">
@@ -176,7 +159,6 @@ export function ProfileSettings() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select
@@ -196,7 +178,6 @@ export function ProfileSettings() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="department">Department (Optional)</Label>
               <div className="relative">
@@ -212,7 +193,6 @@ export function ProfileSettings() {
               </div>
             </div>
           </div>
-
           <div className="flex justify-end gap-2">
             {isEditing ? (
               <>
@@ -241,52 +221,7 @@ export function ProfileSettings() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Account Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Information</CardTitle>
-          <CardDescription>
-            View your account details and subscription status.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Account Created</Label>
-              <p className="text-sm text-muted-foreground">
-                {new Date(user.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Last Login</Label>
-              <p className="text-sm text-muted-foreground">
-                {new Date(user.lastLogin).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Subscription Plan</Label>
-              <p className="text-sm text-muted-foreground capitalize">
-                {user.subscription.plan} ({user.subscription.status})
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">User ID</Label>
-              <p className="text-sm text-muted-foreground font-mono">
-                {user.id}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <CustomerPricingSection /> {/* Add pricing section for upgrades */}
     </div>
   );
 }

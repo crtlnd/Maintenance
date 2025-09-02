@@ -24,9 +24,9 @@ export function ServiceProviderSidebar({ currentView, onViewChange }: ServicePro
     <Sidebar>
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-center">
-          <img 
-            src={caseyUptimeLogo} 
-            alt="Casey Uptime" 
+          <img
+            src={caseyUptimeLogo}
+            alt="Casey Uptime"
             className="h-12 w-auto"
           />
         </div>
@@ -35,7 +35,7 @@ export function ServiceProviderSidebar({ currentView, onViewChange }: ServicePro
         <SidebarMenu>
           {menuItems.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton 
+              <SidebarMenuButton
                 isActive={currentView === item.key}
                 onClick={() => onViewChange(item.key)}
                 className="w-full justify-start"
