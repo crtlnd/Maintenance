@@ -1,23 +1,27 @@
 // frontend/src/components/account/CustomerPricingSection.tsx
 import React, { useState } from 'react';
-import { Check, Crown, Zap } from 'lucide-react';
+import { Check, Crown, Zap, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function CustomerPricingSection() {
-  const { user, upgradePlan } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const currentPlan = user?.subscriptionTier || 'Basic';
+  const [error, setError] = useState<string | null>(null);
+
+  // Handle different user object structures
+  const currentPlan = user?.subscription?.plan || user?.subscriptionTier || 'Basic';
 
   const PRICING_TIERS = [
     {
       plan: 'Basic',
       name: 'Basic',
       price: 20,
+      priceId: 'price_1S2E1zGi9H80HINUlSIJ5u1v',
       assetLimit: 5,
       seatLimit: 1,
       isPopular: false,
@@ -34,6 +38,7 @@ export function CustomerPricingSection() {
       plan: 'Professional',
       name: 'Professional',
       price: 50,
+      priceId: 'price_1S2E2rGi9H80HINU3SVfZwFn',
       assetLimit: 'unlimited',
       seatLimit: '1',
       isPopular: true,
@@ -51,6 +56,7 @@ export function CustomerPricingSection() {
       plan: 'Annual',
       name: 'Annual',
       price: 449,
+      priceId: 'price_1S2E3nGi9H80HINU7PLjhbQs',
       assetLimit: 'unlimited',
       seatLimit: 'unlimited',
       isPopular: false,
@@ -66,27 +72,70 @@ export function CustomerPricingSection() {
     },
   ];
 
-  // frontend/src/components/account/CustomerPricingSection.tsx (partial update)
-const handleUpgrade = async (plan: string) => {
-  console.log('Attempting to upgrade to:', plan, 'Current plan:', currentPlan);
-  if (plan === currentPlan) {
-    console.log('Plan is already active, skipping upgrade');
-    return;
-  }
-  setLoading(plan);
-  try {
-    const success = await upgradePlan(plan);
-    console.log('Upgrade result:', success);
-    if (success) {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+  // Direct upgrade handler with Stripe checkout (no confirmation dialog)
+  const handleUpgrade = async (plan: string) => {
+    console.log('=== UPGRADE HANDLER START ===');
+    console.log('Attempting to upgrade to:', plan, 'Current plan:', currentPlan);
+    if (plan === currentPlan) {
+      console.log('Plan is already active, skipping upgrade');
+      return;
     }
-  } catch (error) {
-    console.error('Upgrade failed:', error);
-  } finally {
-    setLoading(null);
-  }
-};
+
+    const tier = PRICING_TIERS.find(t => t.plan === plan);
+    console.log('Found tier:', tier);
+    if (!tier || !user?.email) {
+      console.log('Missing tier or email:', { tier: !!tier, email: user?.email });
+      setError('Missing plan or user information');
+      return;
+    }
+
+    setLoading(plan);
+    setError(null);
+
+    try {
+      console.log('=== MAKING API CALL ===');
+      console.log('Creating Stripe checkout session for:', { plan, priceId: tier.priceId, email: user.email });
+
+      const apiUrl = 'http://localhost:3000/api/subscriptions/create-checkout-session';
+      console.log('API URL:', apiUrl);
+
+      const requestBody = {
+        priceId: tier.priceId,
+        email: user.email
+      };
+      console.log('Request body:', requestBody);
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (response.ok) {
+        const { url } = await response.json();
+        console.log('Redirecting to Stripe checkout:', url);
+        // Redirect to Stripe checkout
+        window.location.href = url;
+      } else {
+        const errorData = await response.json();
+        console.log('Error response:', errorData);
+        throw new Error(errorData.error || 'Failed to create checkout session');
+      }
+    } catch (error) {
+      console.error('=== UPGRADE ERROR ===');
+      console.error('Upgrade failed:', error);
+      setError(error instanceof Error ? error.message : 'Failed to start checkout process');
+    } finally {
+      console.log('=== UPGRADE HANDLER END ===');
+      setLoading(null);
+    }
+  };
 
   const getButtonText = (plan: string) => {
     if (plan === currentPlan) return 'Current Plan';
@@ -129,6 +178,12 @@ const handleUpgrade = async (plan: string) => {
           <AlertDescription className="text-green-800">
             Your subscription has been updated successfully!
           </AlertDescription>
+        </Alert>
+      )}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -205,15 +260,15 @@ const handleUpgrade = async (plan: string) => {
                 <div className="flex justify-between text-sm">
                   <span>Assets</span>
                   <span>
-                    {user.assetCount} of {user.subscriptionTier === 'Basic' ? 5 : '∞'}
+                    {user.assetCount || 0} of {currentPlan === 'Basic' ? 5 : '∞'}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-primary h-2 rounded-full"
                     style={{
-                      width: user.subscriptionTier === 'Basic'
-                        ? `${Math.min((user.assetCount / 5) * 100, 100)}%`
+                      width: currentPlan === 'Basic'
+                        ? `${Math.min(((user.assetCount || 0) / 5) * 100, 100)}%`
                         : '1%',
                     }}
                   ></div>
@@ -222,13 +277,13 @@ const handleUpgrade = async (plan: string) => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Team Members</span>
-                  <span>1 of {user.subscriptionTier === 'Basic' ? 1 : '∞'}</span>
+                  <span>1 of {currentPlan === 'Basic' ? 1 : '∞'}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-primary h-2 rounded-full"
                     style={{
-                      width: user.subscriptionTier === 'Basic' ? '100%' : '1%',
+                      width: currentPlan === 'Basic' ? '100%' : '1%',
                     }}
                   ></div>
                 </div>

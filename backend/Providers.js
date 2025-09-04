@@ -123,7 +123,7 @@ module.exports = () => {
               description: provider.description,
               serviceType: serviceType.toLowerCase(),
               services: provider.services || [],
-              address: provider.address || 'Unknown兲
+              address: provider.address || 'Unknown Address', // FIXED: Added missing closing quote
               phone: provider.phone || '',
               location: {
                 city: city || location.split(',')[0],
@@ -131,6 +131,9 @@ module.exports = () => {
                   type: 'Point',
                   coordinates: [provider.location.lng || parseFloat(lng) || 0, provider.location.lat || parseFloat(lat) || 0],
                 },
+                // Add direct lat/lng for easier frontend access
+                lat: provider.location.lat || parseFloat(lat) || 0,
+                lng: provider.location.lng || parseFloat(lng) || 0,
               },
               radius: parseFloat(radius),
               type: provider.type || 'independent',
@@ -143,6 +146,13 @@ module.exports = () => {
               website: provider.website || '',
               verified: false,
               subscriptionTier: 'none',
+              // Add distance calculation
+              distance: lat && lng ? calculateDistance(
+                parseFloat(lat),
+                parseFloat(lng),
+                provider.location.lat || parseFloat(lat) || 0,
+                provider.location.lng || parseFloat(lng) || 0
+              ) : null,
             };
             console.log('Saving provider:', providerData);
             return await Provider.findOneAndUpdate(

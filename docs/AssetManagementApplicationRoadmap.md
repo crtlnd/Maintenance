@@ -1,3 +1,26 @@
+1. Asset Dashboard
+	a. Add asset doesn't save the asset permanently
+	b. The data is dummy data
+2. Task List
+	a. Quick Add Task button should match
+	b. when you click a task it takes you to the overview of the asset, not the maintenance tab.
+3. AI Assistant
+	a. remove "Pro" badge
+	b. when clicking a suggested question, is data from the user's database being sent to grok along with the question? Is this real?
+	c. Can AI insights be saved for future review? Can they be tied to assets or actionable for maintenance?
+4. Service providers
+	a. the layout needs to change. location and then type. need more types from a pulldown
+	b. Search for an industrial Equipment & Service, Marley Gearbox Repair, Amarillo Gearbox Repair, Pump Repair, Blower Repair,
+5. Where are notifications? Accountview.tsx? Notifications.ts
+6. Casey Logo - insert branding Casey improves uptime
+7. User Personas - Need to develop three accounts 1. construction (off highway, road contractor) 2. Light machining plant. 3. manufacturing
+8. User Onboarding
+9. Guide - Wiki
+10. Admin login?
+11. Add Service Provider link in footer of landing page, link brings you to service provider benefits and signup.
+
+
+
 # Asset Management Application Roadmap
 
 ## Current Status ✅

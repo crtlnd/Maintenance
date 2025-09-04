@@ -17,6 +17,7 @@ console.log('Environment variables in index.js:', {
 });
 
 const app = express();
+
 app.use(cors({
   origin: 'http://localhost:5173', // Frontend origin
   credentials: true, // Allow credentials
@@ -46,11 +47,13 @@ const exemptRoutes = [
   { path: '/api/auth/login', method: 'POST' },
   { path: '/api/auth/signup', method: 'POST' },
   { path: '/health', method: 'GET' },
+  { path: '/api/health', method: 'GET' }, // Added API health route
   { path: '/api/hello', method: 'GET' },
   { path: '/api/providers', method: 'GET' },
   { path: '/api/providers/subscribe', method: 'POST' },
   { path: '/api/providers/claim', method: 'POST' },
   { path: '/api/webhooks', method: 'POST' },
+  { path: '/api/subscriptions/create-checkout-session', method: 'POST' },
 ];
 
 function isExemptRoute(req) {
@@ -101,9 +104,22 @@ app.post('/api/test-body', (req, res) => {
   res.status(200).send({ received: req.body });
 });
 
+// Health check route (existing)
 app.get('/health', (req, res) => {
   console.log('Health check requested');
   res.status(200).send({ status: 'healthy' });
+});
+
+// API Health check route (what the API test expects)
+app.get('/api/health', (req, res) => {
+  console.log('API Health check requested');
+  res.status(200).send({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    version: '1.0.0'
+  });
 });
 
 async function run() {
@@ -118,25 +134,27 @@ async function run() {
     console.log('Registering routes...');
     delete require.cache[require.resolve('./routes/providers')];
     const authRoutes = require('./routes/auth');
-    app.use('/api/assets', require('./routes/assets'));
+    app.use('/api/assets', require('./routes/assets')());
     console.log('Registered /api/assets route');
     app.use('/api/auth', authRoutes());
     console.log('Registered /api/auth route');
-    app.use('/api/rca', require('./routes/rca'));
+    app.use('/api/rca', require('./routes/rca')());
     console.log('Registered /api/rca route');
-    app.use('/api/rcm', require('./routes/rcm'));
+    app.use('/api/rcm', require('./routes/rcm')());
     console.log('Registered /api/rcm route');
-    app.use('/api/providers', require('./routes/providers'));
+    app.use('/api/maintenance', require('./routes/maintenance')());
+    console.log('Registered /api/maintenance route');
+    app.use('/api/providers', require('./routes/providers')());
     console.log('Registered /api/providers route');
-    app.use('/api/users', require('./routes/users'));
+    app.use('/api/users', require('./routes/users')());
     console.log('Registered /api/users route');
-    app.use('/api/admin', require('./routes/admin'));
+    app.use('/api/admin', require('./routes/admin')());
     console.log('Registered /api/admin route');
-    app.use('/api/ai', require('./routes/ai'));
+    app.use('/api/ai', require('./routes/ai')());
     console.log('Registered /api/ai route');
-    app.use('/api/subscriptions', require('./routes/subscriptions'));
+    app.use('/api/subscriptions', require('./routes/subscriptions')());
     console.log('Registered /api/subscriptions route');
-    app.use('/api/webhooks', require('./routes/webhooks'));
+    app.use('/api/webhooks', require('./routes/webhooks')());
     console.log('Registered /api/webhooks route');
     console.log('Routes registered successfully');
     return true;

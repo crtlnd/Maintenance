@@ -1,3 +1,4 @@
+// frontend/src/dialogs/EditAssetDialog.tsx - FIXED VERSION using existing API
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -7,9 +8,10 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Separator } from '../ui/separator';
-import { CalendarDays, MapPin, Settings, FileText, AlertTriangle, CheckCircle, Clock, Wrench } from 'lucide-react';
+import { Alert, AlertDescription } from '../ui/alert';
+import { CalendarDays, Settings, FileText, AlertTriangle, CheckCircle, Clock, Wrench, AlertCircle } from 'lucide-react';
 import { Asset } from '../../types';
+import { assetApi } from '../../../services/api'; // Use your existing API
 
 interface EditAssetDialogProps {
   isOpen: boolean;
@@ -66,11 +68,16 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
     performedBy: ''
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const handleInputChange = (field: keyof Asset, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    // Clear error when user makes changes
+    if (error) setError(null);
   };
 
   const handleSpecificationChange = (key: string, value: string) => {
@@ -81,10 +88,12 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
         [key]: value
       }
     }));
+    if (error) setError(null);
   };
 
   const addMaintenanceEntry = () => {
     if (!newMaintenanceEntry.date || !newMaintenanceEntry.type || !newMaintenanceEntry.description) {
+      setError('Please fill in date, type, and description for the maintenance entry');
       return;
     }
 
@@ -109,6 +118,7 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
       cost: '',
       performedBy: ''
     });
+    setError(null);
   };
 
   const removeMaintenanceEntry = (id: number) => {
@@ -118,8 +128,40 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
     }));
   };
 
-  const handleSave = () => {
-    onSave(formData);
+  const handleSave = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // FIXED: Use your existing API instead of just calling onSave
+      const updatedAsset = await assetApi.updateAsset(asset.id, formData);
+
+      console.log('Asset updated successfully:', updatedAsset);
+
+      // Update the parent component's state with the real updated asset
+      onSave(updatedAsset);
+      onClose();
+    } catch (err) {
+      console.error('Error updating asset:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update asset. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset form data to original asset data
+    setFormData({
+      ...asset,
+      specifications: asset.specifications || {},
+      maintenanceHistory: asset.maintenanceHistory || [],
+      condition: asset.condition || 'good',
+      lastMaintenanceDate: asset.lastMaintenanceDate || '',
+      nextMaintenanceDate: asset.nextMaintenanceDate || '',
+      warrantyExpiry: asset.warrantyExpiry || '',
+      notes: asset.notes || ''
+    });
+    setError(null);
     onClose();
   };
 
@@ -152,6 +194,13 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
             Update asset information, specifications, maintenance history, and condition
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid gap-6">
           {/* Basic Information */}
@@ -189,7 +238,7 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
                   </Select>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="location">Location</Label>
@@ -383,7 +432,7 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
                     value={newMaintenanceEntry.cost}
                     onChange={(e) => setNewMaintenanceEntry(prev => ({ ...prev, cost: e.target.value }))}
                   />
-                  <Button onClick={addMaintenanceEntry} size="sm">
+                  <Button onClick={addMaintenanceEntry} size="sm" disabled={isLoading}>
                     Add Record
                   </Button>
                 </div>
@@ -421,6 +470,7 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
                             size="sm"
                             onClick={() => removeMaintenanceEntry(entry.id || index)}
                             className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                            disabled={isLoading}
                           >
                             Remove
                           </Button>
@@ -436,11 +486,11 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            Save Changes
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? 'Saving Changes...' : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>

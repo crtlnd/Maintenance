@@ -9,7 +9,6 @@ const getAuthToken = () => {
 // Helper function to make authenticated requests
 const makeRequest = async (url, options = {}) => {
   const token = getAuthToken();
-
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -21,12 +20,10 @@ const makeRequest = async (url, options = {}) => {
 
   try {
     const response = await fetch(`${API_BASE_URL}${url}`, config);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Network error' }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
-
     return await response.json();
   } catch (error) {
     console.error('API request failed:', error);
@@ -39,14 +36,11 @@ export const assetApi = {
   // Get all assets for the current user
   getAssets: async (filters = {}) => {
     const queryParams = new URLSearchParams();
-
     if (filters.location) queryParams.append('location', filters.location);
     if (filters.type) queryParams.append('type', filters.type);
     if (filters.status) queryParams.append('status', filters.status);
-
     const queryString = queryParams.toString();
     const url = `/assets${queryString ? `?${queryString}` : ''}`;
-
     return makeRequest(url);
   },
 
@@ -91,7 +85,7 @@ export const assetApi = {
     return makeRequest('/assets/dashboard');
   },
 
-  // Add maintenance task to asset
+  // Add maintenance task to asset (legacy - for asset-specific tasks)
   addMaintenanceTask: async (assetId, taskData) => {
     return makeRequest(`/assets/${assetId}/tasks`, {
       method: 'POST',
@@ -99,7 +93,7 @@ export const assetApi = {
     });
   },
 
-  // Update maintenance task
+  // Update maintenance task (legacy - for asset-specific tasks)
   updateMaintenanceTask: async (assetId, taskId, taskData) => {
     return makeRequest(`/assets/${assetId}/tasks/${taskId}`, {
       method: 'PUT',
@@ -114,6 +108,77 @@ export const assetApi = {
       body: JSON.stringify(fmeaData),
     });
   },
+};
+
+// Maintenance Tasks API functions
+export const maintenanceApi = {
+  // Get all maintenance tasks for the current user
+  getTasks: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.assetId) queryParams.append('assetId', filters.assetId);
+    if (filters.status) queryParams.append('status', filters.status);
+    if (filters.priority) queryParams.append('priority', filters.priority);
+    if (filters.taskType) queryParams.append('taskType', filters.taskType);
+    const queryString = queryParams.toString();
+    const url = `/maintenance/tasks${queryString ? `?${queryString}` : ''}`;
+    return makeRequest(url);
+  },
+
+  // Get a single maintenance task by ID
+  getTask: async (taskId) => {
+    return makeRequest(`/maintenance/tasks/${taskId}`);
+  },
+
+  // Create a new maintenance task
+  createTask: async (taskData) => {
+    return makeRequest('/maintenance/tasks', {
+      method: 'POST',
+      body: JSON.stringify(taskData),
+    });
+  },
+
+  // Update an existing maintenance task
+  updateTask: async (taskId, taskData) => {
+    return makeRequest(`/maintenance/tasks/${taskId}`, {
+      method: 'PUT',
+      body: JSON.stringify(taskData),
+    });
+  },
+
+  // Complete a maintenance task
+  completeTask: async (taskId, completionData) => {
+    return makeRequest(`/maintenance/tasks/${taskId}/complete`, {
+      method: 'PUT',
+      body: JSON.stringify(completionData),
+    });
+  },
+
+  // Delete a maintenance task
+  deleteTask: async (taskId) => {
+    return makeRequest(`/maintenance/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Get maintenance tasks for a specific asset
+  getTasksForAsset: async (assetId) => {
+    return makeRequest(`/maintenance/tasks?assetId=${assetId}`);
+  },
+
+  // Get overdue tasks
+  getOverdueTasks: async () => {
+    return makeRequest('/maintenance/tasks?status=overdue');
+  },
+
+  // Get tasks due soon (within next 7 days)
+  getTasksDueSoon: async () => {
+    return makeRequest('/maintenance/tasks/due-soon');
+  },
+
+  // Get maintenance dashboard data
+  getDashboardData: async () => {
+    return makeRequest('/maintenance/dashboard');
+  }
 };
 
 // Authentication API functions
@@ -155,9 +220,35 @@ export const userApi = {
   },
 };
 
+// Service Providers API functions (if you need this)
+export const providersApi = {
+  getProviders: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.type) queryParams.append('type', filters.type);
+    if (filters.location) queryParams.append('location', filters.location);
+    if (filters.services) queryParams.append('services', filters.services);
+    const queryString = queryParams.toString();
+    const url = `/providers${queryString ? `?${queryString}` : ''}`;
+    return makeRequest(url);
+  },
+
+  getProvider: async (providerId) => {
+    return makeRequest(`/providers/${providerId}`);
+  },
+
+  contactProvider: async (providerId, contactData) => {
+    return makeRequest(`/providers/${providerId}/contact`, {
+      method: 'POST',
+      body: JSON.stringify(contactData),
+    });
+  }
+};
+
 // Export default API object
 export default {
   assets: assetApi,
+  maintenance: maintenanceApi,
   auth: authApi,
   user: userApi,
+  providers: providersApi,
 };

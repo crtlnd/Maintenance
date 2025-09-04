@@ -6,29 +6,27 @@ import {
   Settings,
   BarChart3,
   User,
+  Zap,
 } from "lucide-react";
-import caseyUptimeLogo from "figma:asset/b0281f1af0d4ecb0182aeab92b8439ecbadd5431.png";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-} from "./ui/sidebar";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "./ui/avatar";
-import { AdminView } from "../types";
-import { useAuth } from "../utils/auth";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { useAuth } from "../contexts/AuthContext";
+
+type AdminView = 'dashboard' | 'users' | 'providers' | 'payments' | 'matching' | 'analytics' | 'account' | 'api-test';
 
 interface AdminSidebarProps {
   currentView: AdminView;
   onViewChange: (view: AdminView) => void;
 }
+
+const iconMap = {
+  LayoutDashboard,
+  Users,
+  DollarSign,
+  Settings,
+  BarChart3,
+  User,
+  Zap,
+};
 
 export function AdminSidebar({
   currentView,
@@ -39,86 +37,95 @@ export function AdminSidebar({
   const menuItems = [
     {
       title: "Dashboard",
-      icon: LayoutDashboard,
+      icon: "LayoutDashboard",
       key: "dashboard" as AdminView,
     },
-    { title: "Users", icon: Users, key: "users" as AdminView },
+    { title: "Users", icon: "Users", key: "users" as AdminView },
     {
       title: "Service Providers",
-      icon: Users,
+      icon: "Users",
       key: "providers" as AdminView,
     },
     {
       title: "Payments",
-      icon: DollarSign,
+      icon: "DollarSign",
       key: "payments" as AdminView,
     },
     {
       title: "Matching",
-      icon: Settings,
+      icon: "Settings",
       key: "matching" as AdminView,
     },
     {
       title: "Analytics",
-      icon: BarChart3,
+      icon: "BarChart3",
       key: "analytics" as AdminView,
+    },
+    {
+      title: "API Test",
+      icon: "Zap",
+      key: "api-test" as AdminView,
     },
   ];
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
+    <div className="h-full bg-white border-r border-gray-200 flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-center">
-          <img
-            src={caseyUptimeLogo}
-            alt="Casey Uptime"
-            className="h-12 w-auto"
-          />
+          <div className="h-12 w-auto flex items-center justify-center text-lg font-semibold text-blue-600">
+            Casey Uptime Admin
+          </div>
         </div>
-      </SidebarHeader>
-      <SidebarContent className="p-2">
-        <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                isActive={currentView === item.key}
+      </div>
+
+      {/* Navigation Menu */}
+      <div className="flex-1 p-2">
+        <nav className="space-y-1">
+          {menuItems.map((item) => {
+            const IconComponent = iconMap[item.icon as keyof typeof iconMap];
+            return (
+              <button
+                key={item.title}
                 onClick={() => onViewChange(item.key)}
-                className="w-full justify-start"
+                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors w-full ${
+                  currentView === item.key
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
               >
-                <item.icon className="h-4 w-4" />
+                <IconComponent className="h-5 w-5" />
                 <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarContent>
-      <SidebarFooter className="p-2 border-t border-sidebar-border">
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            isActive={currentView === "account"}
-            onClick={() => onViewChange("account")}
-            className="w-full justify-start"
-          >
-            <div className="flex items-center gap-2 flex-1">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={user?.avatar} />
-                <AvatarFallback className="text-xs">
-                  {user?.firstName[0]}
-                  {user?.lastName[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">
-                  {user?.firstName} {user?.lastName}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {user?.role}
-                </span>
-              </div>
-            </div>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarFooter>
-    </Sidebar>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Footer */}
+      <div className="p-2 border-t border-gray-200">
+        <button
+          onClick={() => onViewChange("account")}
+          className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors w-full ${
+            currentView === "account"
+              ? 'bg-blue-100 text-blue-600'
+              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          }`}
+        >
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={user?.avatar} />
+            <AvatarFallback className="text-xs">
+              {user?.firstName?.[0] ?? ''}{user?.lastName?.[0] ?? ''}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col items-start min-w-0 flex-1">
+            <span className="text-sm font-medium truncate">
+              {user?.firstName ?? 'Admin'} {user?.lastName ?? ''}
+            </span>
+            <span className="text-xs text-gray-500 truncate">{user?.role ?? 'Administrator'}</span>
+          </div>
+        </button>
+      </div>
+    </div>
   );
 }

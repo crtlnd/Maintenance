@@ -11,18 +11,18 @@ import { EditAssetDialog } from '../dialogs/EditAssetDialog';
 import { AddMaintenanceTaskDialog } from '../dialogs/AddMaintenanceTaskDialog';
 import { AddFMEADialog } from '../dialogs/AddFMEADialog';
 
-export function AssetDetailView({ 
-  asset, 
-  fmeaData, 
-  rcaData, 
-  maintenanceData, 
+export function AssetDetailView({
+  asset,
+  fmeaData,
+  rcaData,
+  maintenanceData,
   defaultTab = 'overview',
   onBack,
   onAddRCA,
   onAddMaintenanceTask,
   onEditAsset,
   onAddFMEA
-}: { 
+}: {
   asset: Asset;
   fmeaData: FMEAEntry[];
   rcaData: RCAEntry[];
@@ -108,7 +108,7 @@ export function AssetDetailView({
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm text-muted-foreground">Operating Hours</p>
-                <p className="font-medium">{asset.operatingHours.toLocaleString()}</p>
+                <p className="font-medium">{asset.operatingHours?.toLocaleString() || 'N/A'}</p>
               </div>
             </div>
           </CardContent>
@@ -148,29 +148,32 @@ export function AssetDetailView({
                 <CardTitle>Specifications</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {asset.specifications.power && (
+                {asset.specifications?.power && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Power:</span>
                     <span>{asset.specifications.power}</span>
                   </div>
                 )}
-                {asset.specifications.capacity && (
+                {asset.specifications?.capacity && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Capacity:</span>
                     <span>{asset.specifications.capacity}</span>
                   </div>
                 )}
-                {asset.specifications.voltage && (
+                {asset.specifications?.voltage && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Voltage:</span>
                     <span>{asset.specifications.voltage}</span>
                   </div>
                 )}
-                {asset.specifications.weight && (
+                {asset.specifications?.weight && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Weight:</span>
                     <span>{asset.specifications.weight}</span>
                   </div>
+                )}
+                {(!asset.specifications || Object.keys(asset.specifications).length === 0) && (
+                  <p className="text-sm text-muted-foreground italic">No specifications available</p>
                 )}
               </CardContent>
             </Card>
@@ -181,29 +184,32 @@ export function AssetDetailView({
                 <CardTitle>Maintenance Schedule</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {asset.maintenanceSchedule.oilChange && (
+                {asset.maintenanceSchedule?.oilChange && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Oil Change:</span>
                     <span>{asset.maintenanceSchedule.oilChange}</span>
                   </div>
                 )}
-                {asset.maintenanceSchedule.filterReplacement && (
+                {asset.maintenanceSchedule?.filterReplacement && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Filter Replacement:</span>
                     <span>{asset.maintenanceSchedule.filterReplacement}</span>
                   </div>
                 )}
-                {asset.maintenanceSchedule.inspection && (
+                {asset.maintenanceSchedule?.inspection && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Inspection:</span>
                     <span>{asset.maintenanceSchedule.inspection}</span>
                   </div>
                 )}
-                {asset.maintenanceSchedule.overhaul && (
+                {asset.maintenanceSchedule?.overhaul && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Overhaul:</span>
                     <span>{asset.maintenanceSchedule.overhaul}</span>
                   </div>
+                )}
+                {(!asset.maintenanceSchedule || Object.keys(asset.maintenanceSchedule).length === 0) && (
+                  <p className="text-sm text-muted-foreground italic">No maintenance schedule defined</p>
                 )}
               </CardContent>
             </Card>
@@ -269,10 +275,10 @@ export function AssetDetailView({
               <p className="text-muted-foreground">Risk assessment and mitigation strategies</p>
             </div>
             {onAddFMEA && (
-              <AddFMEADialog 
-                assetId={asset.id} 
-                assetName={asset.name} 
-                onAddFMEA={onAddFMEA} 
+              <AddFMEADialog
+                assetId={asset.id}
+                assetName={asset.name}
+                onAddFMEA={onAddFMEA}
               />
             )}
           </div>
@@ -370,10 +376,10 @@ export function AssetDetailView({
               <p className="text-muted-foreground">Historical failure analysis with structured methodologies</p>
             </div>
             {onAddRCA && (
-              <AddRCADialog 
-                assetId={asset.id} 
-                assetName={asset.name} 
-                onAddRCA={onAddRCA} 
+              <AddRCADialog
+                assetId={asset.id}
+                assetName={asset.name}
+                onAddRCA={onAddRCA}
               />
             )}
           </div>
@@ -488,7 +494,7 @@ export function AssetDetailView({
                               {entry.fiveWhys.problem}
                             </p>
                           </div>
-                          
+
                           <div className="grid gap-3">
                             {[
                               { key: 'why1', level: 1, color: 'bg-red-50 border-red-200' },
@@ -645,10 +651,10 @@ export function AssetDetailView({
               <p className="text-muted-foreground">Planned maintenance schedules and tasks</p>
             </div>
             {onAddMaintenanceTask && (
-              <AddMaintenanceTaskDialog 
-                assetId={asset.id} 
-                assetName={asset.name} 
-                onAddMaintenanceTask={onAddMaintenanceTask} 
+              <AddMaintenanceTaskDialog
+                assetId={asset.id}
+                assetName={asset.name}
+                onAddMaintenanceTask={onAddMaintenanceTask}
               />
             )}
           </div>

@@ -1,149 +1,309 @@
-// frontend/src/dialogs/AddAssetDialog.tsx
+// frontend/src/dialogs/AddAssetDialog.tsx - FIXED upgrade button navigation
 import React, { useState } from 'react';
-import { Plus, Sparkles, AlertCircle, Crown } from 'lucide-react';
+import { Plus, Crown, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { assetApi } from '../../../services/api'; // Use your existing API
 
 interface AddAssetDialogProps {
   onAddAsset: (asset: any) => number;
   currentAssetCount: number;
+  triggerButton?: React.ReactNode;
 }
 
-export function AddAssetDialog({ onAddAsset, currentAssetCount }: AddAssetDialogProps) {
+interface AssetFormData {
+  name: string;
+  type: string;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  location: string;
+  organization: string;
+  yearManufactured?: number;
+  operatingHours?: number;
+  status: 'operational' | 'maintenance' | 'down' | 'retired';
+  condition: 'excellent' | 'good' | 'fair' | 'poor';
+}
+
+export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }: AddAssetDialogProps) {
   const { canAddAsset, getAssetLimit } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<AssetFormData>({
     name: '',
-    modelNumber: '',
+    type: '',
+    manufacturer: '',
+    model: '',
     serialNumber: '',
+    location: '',
+    organization: '',
+    status: 'operational',
+    condition: 'good'
   });
+
   const canAdd = canAddAsset(currentAssetCount);
   const assetLimit = getAssetLimit();
+
+  // DEBUG: Add debug logging
+  console.log('DEBUG: canAdd:', canAdd, 'currentAssetCount:', currentAssetCount, 'assetLimit:', assetLimit);
+
+  const handleInputChange = (field: keyof AssetFormData, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (error) setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canAdd) return;
+
+    // Basic validation
+    if (!formData.name.trim() || !formData.type.trim() || !formData.manufacturer.trim() ||
+        !formData.model.trim() || !formData.serialNumber.trim() || !formData.location.trim() ||
+        !formData.organization.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
     setIsLoading(true);
-    const newAsset = {
-      name: formData.name,
-      modelNumber: formData.modelNumber,
-      serialNumber: formData.serialNumber,
-      type: 'Equipment',
-      manufacturer: 'Unknown',
-      location: 'Main Facility',
-      condition: 'Good',
-      lastMaintenance: '2024-01-15',
-      installDate: '2023-06-01',
-      operatingHours: Math.floor(Math.random() * 5000) + 1000,
-      specifications: {},
-      maintenanceSchedule: {},
-    };
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    onAddAsset(newAsset);
-    setFormData({ name: '', modelNumber: '', serialNumber: '' });
-    setOpen(false);
-    setIsLoading(false);
+    setError(null);
+
+    try {
+      // FIXED: Use your existing API instead of dummy data
+      const newAsset = await assetApi.createAsset(formData);
+
+      console.log('Asset created successfully:', newAsset);
+
+      // Update the parent component's state with the real saved asset
+      onAddAsset(newAsset);
+
+      // Reset form and close dialog
+      setFormData({
+        name: '',
+        type: '',
+        manufacturer: '',
+        model: '',
+        serialNumber: '',
+        location: '',
+        organization: '',
+        status: 'operational',
+        condition: 'good'
+      });
+      setOpen(false);
+    } catch (err) {
+      console.error('Error creating asset:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create asset. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleCancel = () => {
+    setFormData({
+      name: '',
+      type: '',
+      manufacturer: '',
+      model: '',
+      serialNumber: '',
+      location: '',
+      organization: '',
+      status: 'operational',
+      condition: 'good'
+    });
+    setError(null);
+    setOpen(false);
+  };
+
+  // FIXED: Handle upgrade button click properly
+  const handleUpgradeClick = () => {
+    console.log('Upgrade button clicked - navigating to settings');
+    navigate('/settings'); // Changed from '/account' to '/settings' to match the route in App.tsx
+  };
+
+  // If asset limit reached, show upgrade button instead of dialog trigger
+  if (!canAdd) {
+    return (
+      <Button
+        variant="default"
+        disabled={isLoading}
+        onClick={handleUpgradeClick}
+      >
+        <Crown className="h-4 w-4 mr-2" />
+        Asset limit reached for Basic Plan, click to upgrade
+      </Button>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="default"
-          disabled={canAdd && isLoading}
-          onClick={canAdd ? undefined : () => navigate('/account')}
-        >
-          {canAdd ? (
-            <>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Asset
-            </>
-          ) : (
-            <>
-              <Crown className="h-4 w-4 mr-2" />
-              Asset limit reached for Basic Plan, click to upgrade
-            </>
-          )}
-        </Button>
+        {triggerButton || (
+          <Button variant="default" disabled={isLoading}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Asset
+          </Button>
+        )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Asset</DialogTitle>
           <DialogDescription>
-            {canAdd
-              ? 'Add a new asset to your maintenance management system. Use the AI button to auto-populate specifications.'
-              : `You've reached your plan's limit of ${assetLimit}. Upgrade your plan to add more assets.`}
+            Enter the details of your new asset. All fields marked with * are required.
           </DialogDescription>
         </DialogHeader>
-        {!canAdd && (
-          <Alert>
-            <Crown className="h-4 w-4" />
-            <AlertDescription>
-              You've reached your plan's limit of {assetLimit} assets.{' '}
-              <span
-                className="text-blue-600 cursor-pointer"
-                onClick={() => navigate('/account')}
-              >
-                Upgrade to add more assets and unlock additional features.
-              </span>
-            </AlertDescription>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        {canAdd && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="asset-name">Asset Name *</Label>
-              <Input
-                id="asset-name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Compressor Unit #1"
-                required
-              />
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="asset-name">Asset Name *</Label>
+                <Input
+                  id="asset-name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="e.g., Excavator #1"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="asset-type">Asset Type *</Label>
+                <Input
+                  id="asset-type"
+                  value={formData.type}
+                  onChange={(e) => handleInputChange('type', e.target.value)}
+                  placeholder="e.g., Excavator, Pump, Generator"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="manufacturer">Manufacturer *</Label>
+                <Input
+                  id="manufacturer"
+                  value={formData.manufacturer}
+                  onChange={(e) => handleInputChange('manufacturer', e.target.value)}
+                  placeholder="e.g., Caterpillar, John Deere"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="model">Model *</Label>
+                <Input
+                  id="model"
+                  value={formData.model}
+                  onChange={(e) => handleInputChange('model', e.target.value)}
+                  placeholder="e.g., 320D, L540"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="serial-number">Serial Number *</Label>
+                <Input
+                  id="serial-number"
+                  value={formData.serialNumber}
+                  onChange={(e) => handleInputChange('serialNumber', e.target.value)}
+                  placeholder="e.g., SN123456789"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location *</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  placeholder="e.g., Houston Facility, Building A"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="organization">Organization *</Label>
+                <Input
+                  id="organization"
+                  value={formData.organization}
+                  onChange={(e) => handleInputChange('organization', e.target.value)}
+                  placeholder="Your organization name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="year-manufactured">Year Manufactured</Label>
+                <Input
+                  id="year-manufactured"
+                  type="number"
+                  value={formData.yearManufactured || ''}
+                  onChange={(e) => handleInputChange('yearManufactured', parseInt(e.target.value) || undefined)}
+                  min={1900}
+                  max={new Date().getFullYear()}
+                  placeholder="e.g., 2020"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="operating-hours">Operating Hours</Label>
+                <Input
+                  id="operating-hours"
+                  type="number"
+                  value={formData.operatingHours || ''}
+                  onChange={(e) => handleInputChange('operatingHours', parseInt(e.target.value) || undefined)}
+                  min={0}
+                  placeholder="Current operating hours"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="operational">Operational</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="down">Down</SelectItem>
+                    <SelectItem value="retired">Retired</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="condition">Condition</Label>
+                <Select value={formData.condition} onValueChange={(value) => handleInputChange('condition', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="excellent">Excellent</SelectItem>
+                    <SelectItem value="good">Good</SelectItem>
+                    <SelectItem value="fair">Fair</SelectItem>
+                    <SelectItem value="poor">Poor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="model-number">Model Number *</Label>
-              <Input
-                id="model-number"
-                value={formData.modelNumber}
-                onChange={(e) => setFormData(prev => ({ ...prev, modelNumber: e.target.value }))}
-                placeholder="e.g., AC-2500X"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="serial-number">Serial Number *</Label>
-              <Input
-                id="serial-number"
-                value={formData.serialNumber}
-                onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
-                placeholder="e.g., SN123456789"
-                required
-              />
-            </div>
-            <Alert className="bg-blue-50 border-blue-200">
-              <Sparkles className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                After adding the asset, use the "Fill all known details with AI" button to automatically populate specifications and maintenance schedules.
-              </AlertDescription>
-            </Alert>
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Adding...' : 'Add Asset'}
-              </Button>
-            </div>
-          </form>
-        )}
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Creating Asset...' : 'Create Asset'}
+            </Button>
+          </div>
+        </form>
+
         {assetLimit !== 'unlimited' && (
           <div className="pt-4 border-t">
             <div className="flex justify-between text-sm text-muted-foreground">

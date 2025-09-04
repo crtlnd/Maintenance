@@ -8,9 +8,12 @@ const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   company: { type: String, required: true },
-  role: { type: String, required: true },
+  role: {
+    type: String,
+    default: 'user'
+    // Removed enum restriction to allow free-form job titles like "Maintenance Manager"
+  },
   consent: { type: Boolean, default: false },
-
   // Updated subscription fields to match frontend expectations
   subscriptionTier: {
     type: String,
@@ -19,10 +22,9 @@ const userSchema = new mongoose.Schema({
   },
   userType: {
     type: String,
-    enum: ['customer', 'service_provider'],
+    enum: ['customer', 'service_provider', 'admin'],
     default: 'customer'
   },
-
   // Add subscription object that frontend expects
   subscription: {
     plan: {
@@ -40,14 +42,24 @@ const userSchema = new mongoose.Schema({
       default: Date.now
     }
   },
-
+  // Admin-specific fields
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  organization: {
+    type: String,
+    default: function() {
+      return this.company;
+    }
+  },
+  avatar: { type: String },
   stripeCustomerId: { type: String },
   stripeSubscriptionId: { type: String },
   assetCount: { type: Number, default: 0 },
   assets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Asset' }],
   lastLogin: { type: Date },
   createdAt: { type: Date, default: Date.now },
-
   // Enhanced notification preferences to match frontend
   notificationPreferences: {
     maintenanceDue: { type: Boolean, default: true },
@@ -69,6 +81,11 @@ const userSchema = new mongoose.Schema({
     sms: { type: Boolean, default: false },
   },
 });
+
+// Add method to check if user is admin
+userSchema.methods.isAdmin = function() {
+  return this.userType === 'admin' || this.role === 'admin';
+};
 
 // Pre-save middleware to sync subscriptionTier with subscription.plan
 userSchema.pre('save', async function (next) {

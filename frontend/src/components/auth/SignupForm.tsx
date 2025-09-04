@@ -154,18 +154,20 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         <CardDescription>Get started with Maintenance Manager!</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-4">Choose Your Plan</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-6">Choose Your Plan</h3>
+          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
             {plans.map((plan) => (
               <Card
                 key={plan.name}
-                className={`p-4 cursor-pointer ${selectedPlan === plan.name ? 'border-blue-500 border-2' : 'border-gray-200'}`}
+                className={`p-4 cursor-pointer transition-all hover:shadow-md ${
+                  selectedPlan === plan.name ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                }`}
                 onClick={() => setSelectedPlan(plan.name)}
               >
-                <h4 className="text-lg font-bold">{plan.name}</h4>
-                <p className="text-xl">{plan.price}/{plan.period}</p>
-                <p className="text-sm text-gray-600">{plan.description}</p>
+                <h4 className="text-lg font-bold mb-2">{plan.name}</h4>
+                <p className="text-xl font-semibold mb-2">{plan.price}<span className="text-sm font-normal text-gray-600">/{plan.period}</span></p>
+                <p className="text-sm text-gray-600 leading-relaxed">{plan.description}</p>
               </Card>
             ))}
           </div>

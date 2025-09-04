@@ -5,11 +5,11 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  DollarSign, 
+import {
+  Search,
+  Filter,
+  Download,
+  DollarSign,
   CreditCard,
   CheckCircle,
   Clock,
@@ -19,17 +19,20 @@ import {
   TrendingUp,
   Calendar,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
-import { Payment } from '../../types';
-import { adminPayments } from '../../data/initialData';
+import { usePayments } from '../../hooks/useAdminData';
 
 export function AdminPaymentsView() {
-  const [payments] = useState<Payment[]>(adminPayments);
+  const { data: paymentsData, loading, error, refetch } = usePayments();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
+
+  // Extract payments array from API response (handle both direct array and paginated response)
+  const payments = Array.isArray(paymentsData) ? paymentsData : (paymentsData?.payments || []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -74,39 +77,86 @@ export function AdminPaymentsView() {
   };
 
   const formatCurrency = (amount: number) => {
+    // Convert from cents to dollars if needed
+    const dollarAmount = amount > 1000 ? amount / 100 : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount);
+    }).format(dollarAmount);
   };
 
   const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         payment.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         payment.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = payment.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         payment.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         payment.id?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
     const matchesPlan = planFilter === 'all' || payment.subscriptionPlan === planFilter;
-    
+
     if (dateFilter !== 'all') {
       const paymentDate = new Date(payment.transactionDate);
       const now = new Date();
       const daysDiff = Math.floor((now.getTime() - paymentDate.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (dateFilter === 'today' && daysDiff !== 0) return false;
       if (dateFilter === 'week' && daysDiff > 7) return false;
       if (dateFilter === 'month' && daysDiff > 30) return false;
     }
-    
+
     return matchesSearch && matchesStatus && matchesPlan;
   });
 
   // Calculate metrics
-  const totalRevenue = payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0);
-  const pendingAmount = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
-  const failedAmount = payments.filter(p => p.status === 'failed').reduce((sum, p) => sum + p.amount, 0);
+  const totalRevenue = payments.filter(p => p.status === 'completed').reduce((sum, p) => {
+    const amount = p.amount > 1000 ? p.amount / 100 : p.amount; // Handle cents vs dollars
+    return sum + amount;
+  }, 0);
+
+  const pendingAmount = payments.filter(p => p.status === 'pending').reduce((sum, p) => {
+    const amount = p.amount > 1000 ? p.amount / 100 : p.amount;
+    return sum + amount;
+  }, 0);
+
+  const failedAmount = payments.filter(p => p.status === 'failed').reduce((sum, p) => {
+    const amount = p.amount > 1000 ? p.amount / 100 : p.amount;
+    return sum + amount;
+  }, 0);
+
   const completedCount = payments.filter(p => p.status === 'completed').length;
   const pendingCount = payments.filter(p => p.status === 'pending').length;
   const failedCount = payments.filter(p => p.status === 'failed').length;
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-gray-200 rounded-lg h-24"></div>
+            ))}
+          </div>
+          <div className="bg-gray-200 rounded-lg h-64"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+            <span className="text-red-700">Error loading payments: {error}</span>
+          </div>
+          <Button onClick={refetch} className="mt-2" variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -119,8 +169,12 @@ export function AdminPaymentsView() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={refetch} disabled={loading}>
+            {loading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
             Sync Payments
           </Button>
           <Button>
@@ -181,7 +235,7 @@ export function AdminPaymentsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Math.round((completedCount / payments.length) * 100)}%
+              {payments.length > 0 ? Math.round((completedCount / payments.length) * 100) : 0}%
             </div>
             <p className="text-xs text-muted-foreground">
               Payment success rate
@@ -271,34 +325,34 @@ export function AdminPaymentsView() {
                 <TableRow key={payment.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{payment.userName}</div>
-                      <div className="text-sm text-muted-foreground">{payment.userEmail}</div>
+                      <div className="font-medium">{payment.userName || 'Unknown User'}</div>
+                      <div className="text-sm text-muted-foreground">{payment.userEmail || 'No email'}</div>
                       <div className="text-xs text-muted-foreground">{payment.id}</div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">{formatCurrency(payment.amount)}</div>
-                    <div className="text-sm text-muted-foreground">{payment.currency}</div>
+                    <div className="text-sm text-muted-foreground">{payment.currency || 'USD'}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getPlanColor(payment.subscriptionPlan)}>
-                      {payment.subscriptionPlan.charAt(0).toUpperCase() + payment.subscriptionPlan.slice(1)}
+                    <Badge className={getPlanColor(payment.subscriptionPlan || 'basic')}>
+                      {payment.subscriptionPlan?.charAt(0).toUpperCase() + payment.subscriptionPlan?.slice(1) || 'Basic'}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(payment.status)}>
                       {getStatusIcon(payment.status)}
-                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                      {payment.status?.charAt(0).toUpperCase() + payment.status?.slice(1)}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <CreditCard className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{payment.paymentMethod}</span>
+                      <span className="text-sm">{payment.paymentMethod || 'card'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {formatDate(payment.transactionDate)}
+                    {payment.transactionDate ? formatDate(payment.transactionDate) : 'N/A'}
                   </TableCell>
                   <TableCell className="text-sm">
                     {payment.nextBillingDate ? formatDate(payment.nextBillingDate) : 'N/A'}
@@ -306,7 +360,7 @@ export function AdminPaymentsView() {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       {payment.invoiceUrl && (
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => window.open(payment.invoiceUrl, '_blank')}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       )}
@@ -326,6 +380,12 @@ export function AdminPaymentsView() {
               ))}
             </TableBody>
           </Table>
+
+          {filteredPayments.length === 0 && !loading && (
+            <div className="text-center py-8 text-muted-foreground">
+              {payments.length === 0 ? 'No payments found.' : 'No payments match your search criteria.'}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

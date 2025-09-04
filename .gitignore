@@ -6,3 +6,10 @@ backend/node_modules/
 .env
 .vite/
 backend/test-stripe.js
+
+# API Keys and Secrets
+*.key
+*test*.js
+.env*
+secrets/
+

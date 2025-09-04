@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { 
-  Users, 
-  Building2, 
-  DollarSign, 
-  TrendingUp, 
+import {
+  Users,
+  Building2,
+  DollarSign,
+  TrendingUp,
   TrendingDown,
   Activity,
   Clock,
@@ -16,37 +16,83 @@ import {
   Calendar,
   BarChart3
 } from 'lucide-react';
-import { adminMetrics, adminUsers, adminPayments } from '../../data/initialData';
+import adminApi from '../../../services/adminApi';
 
 export function AdminDashboardView() {
-  const metrics = adminMetrics;
-  
-  // Calculate recent activity metrics
-  const recentUsers = adminUsers.filter(u => {
-    const loginDate = new Date(u.lastLogin);
-    const now = new Date();
-    const daysDiff = Math.floor((now.getTime() - loginDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 7;
-  }).length;
+  const [metrics, setMetrics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const recentPayments = adminPayments.filter(p => {
-    const paymentDate = new Date(p.transactionDate);
-    const now = new Date();
-    const daysDiff = Math.floor((now.getTime() - paymentDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 7;
-  });
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        setLoading(true);
+        const data = await adminApi.getMetrics();
+        setMetrics(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching admin metrics:', err);
+        setError('Failed to load dashboard metrics');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const pendingPayments = adminPayments.filter(p => p.status === 'pending').length;
-  const failedPayments = adminPayments.filter(p => p.status === 'failed').length;
+    fetchMetrics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-gray-200 rounded-lg h-32"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+            <span className="text-red-700">{error}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-muted-foreground">
+          No metrics data available
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate display values
+  const activeUsersPercent = Math.round((metrics.activeUsers / metrics.totalUsers) * 100);
+  const verificationPercent = metrics.totalProviders > 0 ? Math.round((metrics.verifiedProviders / metrics.totalProviders) * 100) : 0;
+  const successPercent = Math.round((metrics.successfulMatches / metrics.totalRequests) * 100);
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1>Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            System overview and key metrics for the maintenance management platform.
+            System overview and key metrics for the Casey platform.
           </p>
         </div>
         <div className="flex gap-2">
@@ -73,7 +119,7 @@ export function AdminDashboardView() {
             <p className="text-xs text-muted-foreground">
               <span className="inline-flex items-center text-green-600">
                 <TrendingUp className="h-3 w-3 mr-1" />
-                +12% from last month
+                All registered users
               </span>
             </p>
           </CardContent>
@@ -102,7 +148,7 @@ export function AdminDashboardView() {
             <p className="text-xs text-muted-foreground">
               <span className="inline-flex items-center text-green-600">
                 <TrendingUp className="h-3 w-3 mr-1" />
-                +8% from last month
+                Current month projection
               </span>
             </p>
           </CardContent>
@@ -114,9 +160,7 @@ export function AdminDashboardView() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.round((metrics.successfulMatches / metrics.totalRequests) * 100)}%
-            </div>
+            <div className="text-2xl font-bold">{successPercent}%</div>
             <p className="text-xs text-muted-foreground">
               {metrics.successfulMatches.toLocaleString()} successful matches
             </p>
@@ -139,9 +183,9 @@ export function AdminDashboardView() {
                   <span className="text-sm">Active Users (7 days)</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-medium">{recentUsers}</span>
+                  <span className="text-sm font-medium">{metrics.activeUsers}</span>
                   <span className="text-xs text-muted-foreground ml-2">
-                    ({Math.round((recentUsers / metrics.totalUsers) * 100)}%)
+                    ({activeUsersPercent}%)
                   </span>
                 </div>
               </div>
@@ -172,9 +216,7 @@ export function AdminDashboardView() {
                   <span className="text-sm">Provider Verification</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-medium">
-                    {Math.round((metrics.verifiedProviders / metrics.totalProviders) * 100)}%
-                  </span>
+                  <span className="text-sm font-medium">{verificationPercent}%</span>
                 </div>
               </div>
             </div>
@@ -192,36 +234,29 @@ export function AdminDashboardView() {
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <div className="flex-1">
-                  <p className="text-sm">New service provider registered</p>
-                  <p className="text-xs text-muted-foreground">Power Systems Repair Co. - 2 hours ago</p>
+                  <p className="text-sm">System metrics updated</p>
+                  <p className="text-xs text-muted-foreground">Dashboard refreshed - now</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <div className="flex-1">
-                  <p className="text-sm">Payment processed successfully</p>
-                  <p className="text-xs text-muted-foreground">$500 from Houston CAT Dealer - 4 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm">Matching rule updated</p>
-                  <p className="text-xs text-muted-foreground">Emergency Priority rule modified - 6 hours ago</p>
+                  <p className="text-sm">Active user monitoring</p>
+                  <p className="text-xs text-muted-foreground">{metrics.activeUsers} users active this week</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                 <div className="flex-1">
-                  <p className="text-sm">New customer organization</p>
-                  <p className="text-xs text-muted-foreground">Industrial Solutions Inc. upgraded to Pro - 1 day ago</p>
+                  <p className="text-sm">Provider verification status</p>
+                  <p className="text-xs text-muted-foreground">{metrics.verifiedProviders} providers verified</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                 <div className="flex-1">
-                  <p className="text-sm">Payment failure detected</p>
-                  <p className="text-xs text-muted-foreground">Credit card declined - requires attention - 1 day ago</p>
+                  <p className="text-sm">Asset tracking active</p>
+                  <p className="text-xs text-muted-foreground">{metrics.totalAssets} assets monitored</p>
                 </div>
               </div>
             </div>
@@ -233,41 +268,41 @@ export function AdminDashboardView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weekly Payments</CardTitle>
+            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${recentPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}
+              ${metrics.monthlyRevenue.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {recentPayments.length} transactions this week
+              Current month projection
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-            <Clock className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingPayments}</div>
+            <div className="text-2xl font-bold">{metrics.totalAssets}</div>
             <p className="text-xs text-muted-foreground">
-              Awaiting processing
+              Equipment being tracked
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed Payments</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <Users className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{failedPayments}</div>
+            <div className="text-2xl font-bold">{metrics.activeUsers}</div>
             <p className="text-xs text-muted-foreground">
-              Require attention
+              Active in last 7 days
             </p>
           </CardContent>
         </Card>

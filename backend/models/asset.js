@@ -80,7 +80,7 @@ const assetSchema = new mongoose.Schema({
   industry: { type: String, enum: ['oil/gas', 'construction', 'manufacturing', 'other'], default: 'other' },
   status: { type: String, enum: ['operational', 'maintenance', 'down', 'retired'], default: 'operational' },
   condition: { type: String, enum: ['excellent', 'good', 'fair', 'poor'], default: 'good' },
-  userId: { type: Number, required: true },
+  userId: { type: String, required: true },
 
   // Enhanced fields for rich asset data
   type: { type: String, required: true }, // excavator, truck, generator, etc.

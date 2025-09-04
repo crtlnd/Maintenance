@@ -6,14 +6,14 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Users, 
-  Building2, 
-  Mail, 
-  Phone, 
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Users,
+  Building2,
+  Mail,
+  Phone,
   Calendar,
   Shield,
   Ban,
@@ -21,18 +21,23 @@ import {
   AlertTriangle,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { AdminUser } from '../../types';
-import { adminUsers } from '../../data/initialData';
+import { useUsers, useAdminMutation } from '../../hooks/useAdminData';
+import adminApi from '../../../Services/adminApi';
 
 export function AdminUsersView() {
-  const [users] = useState<AdminUser[]>(adminUsers);
+  const { data: usersData, loading, error, refetch } = useUsers();
+  const { mutate, loading: mutationLoading } = useAdminMutation();
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [subscriptionFilter, setSubscriptionFilter] = useState<string>('all');
+
+  // Extract users array from API response (handle both direct array and paginated response)
+  const users = Array.isArray(usersData) ? usersData : (usersData?.users || []);
 
   const getUserTypeColor = (userType: string) => {
     switch (userType) {
@@ -74,21 +79,78 @@ export function AdminUsersView() {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.company.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.company?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesUserType = userTypeFilter === 'all' || user.userType === userTypeFilter;
     const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    const matchesSubscription = subscriptionFilter === 'all' || user.subscription.plan === subscriptionFilter;
-    
+    const matchesSubscription = subscriptionFilter === 'all' || user.subscription?.plan === subscriptionFilter;
+
     return matchesSearch && matchesUserType && matchesStatus && matchesSubscription;
   });
 
-  const handleUserAction = (action: string, userId: string) => {
-    console.log(`${action} user:`, userId);
-    // Here you would implement the actual user management actions
+  const handleUserAction = async (action: string, userId: string) => {
+    try {
+      switch (action) {
+        case 'suspend':
+          await mutate(() => adminApi.updateUserStatus(userId, 'suspended'));
+          break;
+        case 'activate':
+          await mutate(() => adminApi.updateUserStatus(userId, 'active'));
+          break;
+        case 'approve':
+          await mutate(() => adminApi.updateUserStatus(userId, 'active'));
+          break;
+        case 'view':
+        case 'edit':
+        case 'delete':
+          console.log(`${action} user:`, userId);
+          // Implement these actions as needed
+          break;
+      }
+
+      // Refresh data after successful action
+      if (action !== 'view' && action !== 'edit') {
+        refetch();
+      }
+    } catch (error) {
+      console.error(`Error ${action} user:`, error);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-gray-200 rounded-lg h-24"></div>
+            ))}
+          </div>
+          <div className="bg-gray-200 rounded-lg h-64"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+            <span className="text-red-700">Error loading users: {error}</span>
+          </div>
+          <Button onClick={refetch} className="mt-2" variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -256,26 +318,26 @@ export function AdminUsersView() {
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={user.avatar} />
                         <AvatarFallback className="text-xs">
-                          {user.firstName[0]}{user.lastName[0]}
+                          {user.firstName?.[0] || ''}{user.lastName?.[0] || ''}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="font-medium">
-                          {user.firstName} {user.lastName}
+                          {user.firstName || 'N/A'} {user.lastName || ''}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {user.email}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {user.company}
+                          {user.company || 'No company'}
                         </div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge className={getUserTypeColor(user.userType)}>
-                      {user.userType === 'service_provider' ? 'Provider' : 
-                       user.userType.charAt(0).toUpperCase() + user.userType.slice(1)}
+                      {user.userType === 'service_provider' ? 'Provider' :
+                       user.userType?.charAt(0).toUpperCase() + user.userType?.slice(1)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -283,16 +345,16 @@ export function AdminUsersView() {
                       {user.status === 'active' && <CheckCircle className="h-3 w-3 mr-1" />}
                       {user.status === 'suspended' && <Ban className="h-3 w-3 mr-1" />}
                       {user.status === 'pending' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                      {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                      {user.status?.charAt(0).toUpperCase() + user.status?.slice(1)}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getSubscriptionColor(user.subscription.plan)}>
-                      {user.subscription.plan.charAt(0).toUpperCase() + user.subscription.plan.slice(1)}
+                    <Badge className={getSubscriptionColor(user.subscription?.plan || 'basic')}>
+                      {user.subscription?.plan?.charAt(0).toUpperCase() + user.subscription?.plan?.slice(1) || 'Basic'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {formatDate(user.lastLogin)}
+                    {user.lastLogin ? formatDate(user.lastLogin) : 'Never'}
                   </TableCell>
                   <TableCell className="text-sm">
                     {formatDate(user.createdAt)}
@@ -300,9 +362,12 @@ export function AdminUsersView() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button variant="ghost" className="h-8 w-8 p-0" disabled={mutationLoading}>
+                          {mutationLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -346,6 +411,12 @@ export function AdminUsersView() {
               ))}
             </TableBody>
           </Table>
+
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No users found matching your criteria.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

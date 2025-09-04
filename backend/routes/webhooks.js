@@ -6,7 +6,7 @@ const User = require('../models/user');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-router.post('/webhooks', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -43,4 +43,4 @@ router.post('/webhooks', express.raw({ type: 'application/json' }), async (req, 
   res.json({ received: true });
 });
 
-module.exports = router;
+module.exports = () => router;

@@ -84,7 +84,7 @@ module.exports = () => {
         }
 
         // Check user exists and subscription limits
-        const user = await User.findOne({ id: req.auth.userId });
+        const user = await User.findById(req.auth.userId);
         if (!user) {
           return res.status(404).send({ error: 'User not found' });
         }
@@ -122,7 +122,7 @@ module.exports = () => {
 
         // Update user asset count
         await User.updateOne(
-          { id: req.auth.userId },
+          { _id: req.auth.userId },
           { $inc: { assetCount: 1 }, $push: { assets: newAsset._id } }
         );
 
@@ -324,7 +324,7 @@ module.exports = () => {
 
         const assetId = parseInt(req.params.id);
         const deletedAsset = await Asset.findOneAndDelete({
-          id: assetId,
+          _id: assetId,
           userId: req.auth.userId
         });
 

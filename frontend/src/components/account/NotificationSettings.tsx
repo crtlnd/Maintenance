@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Mail, MessageSquare, Smartphone, Save } from 'lucide-react';
+import { Bell, Mail, MessageSquare, Smartphone, Save, TestTube } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -9,11 +9,15 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { Separator } from '../ui/separator';
 import { useAuth } from '../../utils/auth';
 import { NotificationPreferences } from '../../types';
+import { NotificationService } from '../../utils/notifications';
 
 export function NotificationSettings() {
   const { user, updateNotificationPreferences } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [testingNotifications, setTestingNotifications] = useState(false);
+  const [testResult, setTestResult] = useState<{ email: boolean; sms: boolean } | null>(null);
+
   const [preferences, setPreferences] = useState<NotificationPreferences>(
     user?.notificationPreferences || {
       maintenanceDue: true,
@@ -33,15 +37,78 @@ export function NotificationSettings() {
     setIsSaving(true);
     setSuccess(false);
 
-    // Simulate API call
+    // Save to your auth context (existing functionality)
     await new Promise(resolve => setTimeout(resolve, 1000));
-
     updateNotificationPreferences(preferences);
+
+    // FIXED: Save to localStorage for NotificationService integration
+    const notificationPrefs = {
+      email: {
+        taskAssignment: preferences.taskAssignments,
+        taskCompletion: true,
+        overdueTasks: preferences.maintenanceOverdue,
+        maintenanceReminders: preferences.maintenanceDue,
+      },
+      sms: {
+        taskAssignment: preferences.smsNotifications && preferences.taskAssignments,
+        taskCompletion: preferences.smsNotifications,
+        overdueTasks: preferences.smsNotifications && preferences.maintenanceOverdue,
+        urgentAlerts: preferences.smsNotifications && preferences.assetFailures,
+      },
+      contactInfo: {
+        email: user?.email || '',
+        phone: '+1-555-0123', // Add a default phone or get from user profile
+      },
+    };
+
+    localStorage.setItem('notificationPreferences', JSON.stringify(notificationPrefs));
+    console.log('Saved notification preferences:', notificationPrefs);
+
     setIsSaving(false);
     setSuccess(true);
 
     // Hide success message after 3 seconds
     setTimeout(() => setSuccess(false), 3000);
+  };
+
+  const testNotifications = async () => {
+    setTestingNotifications(true);
+    const notificationService = NotificationService.getInstance();
+
+    try {
+      const mockTask = {
+        id: 'test-task',
+        description: 'Test Maintenance Task - Notification Integration',
+        responsible: user?.firstName + ' ' + user?.lastName || 'Test User',
+        taskType: 'preventive' as const,
+        priority: 'medium' as const,
+        frequency: 'Weekly',
+        estimatedDuration: '2 hours',
+        nextDue: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString(),
+      };
+
+      const mockAsset = {
+        id: 1,
+        name: 'Test Industrial Equipment',
+        type: 'Manufacturing Equipment',
+        location: 'Production Floor A',
+      };
+
+      // Test the notification service
+      const result = await notificationService.notifyTaskAssignment(
+        mockTask,
+        mockAsset,
+        preferences.emailNotifications ? user?.email : undefined,
+        preferences.smsNotifications ? '+1-555-TEST' : undefined
+      );
+
+      setTestResult(result);
+    } catch (error) {
+      console.error('Error testing notifications:', error);
+      setTestResult({ email: false, sms: false });
+    } finally {
+      setTestingNotifications(false);
+    }
   };
 
   const updatePreference = (key: keyof NotificationPreferences, value: boolean | string) => {
@@ -196,7 +263,7 @@ export function NotificationSettings() {
             <Label>Email Digest Frequency</Label>
             <Select
               value={preferences.digestFrequency}
-              onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'never') => 
+              onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'never') =>
                 updatePreference('digestFrequency', value)
               }
             >
@@ -214,6 +281,48 @@ export function NotificationSettings() {
               Receive a summary of maintenance activities and alerts.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Test Notifications Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TestTube className="h-5 w-5" />
+            Test Notifications
+          </CardTitle>
+          <CardDescription>
+            Send a test notification to verify your settings are working correctly.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {testResult && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <AlertDescription className="text-blue-800">
+                <strong>Test Results:</strong> Email: {testResult.email ? 'Sent' : 'Failed'},
+                SMS: {testResult.sms ? 'Sent' : 'Failed'}
+                <br />
+                <span className="text-sm">Check the browser console for detailed notification logs</span>
+              </AlertDescription>
+            </Alert>
+          )}
+          <Button
+            onClick={testNotifications}
+            disabled={testingNotifications}
+            variant="outline"
+          >
+            {testingNotifications ? (
+              <>
+                <TestTube className="h-4 w-4 mr-2 animate-pulse" />
+                Sending Test...
+              </>
+            ) : (
+              <>
+                <TestTube className="h-4 w-4 mr-2" />
+                Send Test Notification
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 

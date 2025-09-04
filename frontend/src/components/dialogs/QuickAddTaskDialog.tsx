@@ -9,11 +9,11 @@ import { DatePicker } from '../ui/date-picker';
 import { ContactSelector } from '../ui/contact-selector';
 import { Asset, MaintenanceTask } from '../../types';
 
-export function QuickAddTaskDialog({ 
+export function QuickAddTaskDialog({
   assets,
   onAddMaintenanceTask,
   triggerVariant = 'default'
-}: { 
+}: {
   assets: Asset[];
   onAddMaintenanceTask: (task: Omit<MaintenanceTask, 'id'>) => void;
   triggerVariant?: 'default' | 'primary' | 'fab';
@@ -31,7 +31,7 @@ export function QuickAddTaskDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.assetId || !formData.description || !formData.nextDue || !formData.responsible || !formData.responsibleEmail) {
       return;
     }
@@ -55,7 +55,7 @@ export function QuickAddTaskDialog({
 
     onAddMaintenanceTask(task);
     setOpen(false);
-    
+
     // Reset form
     setFormData({
       assetId: '',
@@ -76,7 +76,7 @@ export function QuickAddTaskDialog({
         </Button>
       );
     }
-    
+
     if (triggerVariant === 'primary') {
       return (
         <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
@@ -94,6 +94,14 @@ export function QuickAddTaskDialog({
     );
   };
 
+  // Filter out any invalid assets before rendering
+  const validAssets = (assets || []).filter(asset => asset && asset.id != null);
+
+  // Don't render the dialog if there are no valid assets
+  if (validAssets.length === 0) {
+    return null; // or return a disabled button with tooltip
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -109,7 +117,7 @@ export function QuickAddTaskDialog({
             Quickly create a maintenance task with essential details. You can add more details later.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="assetId">Asset *</Label>
@@ -118,7 +126,7 @@ export function QuickAddTaskDialog({
                 <SelectValue placeholder="Select an asset..." />
               </SelectTrigger>
               <SelectContent>
-                {assets.map((asset) => (
+                {validAssets.map((asset) => (
                   <SelectItem key={asset.id} value={asset.id.toString()}>
                     {asset.name} - {asset.type} ({asset.location})
                   </SelectItem>
