@@ -418,15 +418,6 @@ export function TaskListView({
           </CardContent>
         </Card>
       )}
-
-      {/* Floating Action Button */}
-      {onAddMaintenanceTask && (
-        <QuickAddTaskDialog
-          assets={assets}
-          onAddMaintenanceTask={onAddMaintenanceTask}
-          triggerVariant="fab"
-        />
-      )}
     </div>
   );
 }

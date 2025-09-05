@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Plus, CheckCircle, AlertCircle, Calendar, User, DollarSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit, CheckCircle, AlertCircle, Calendar, User, DollarSign, X } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -12,14 +12,14 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { Progress } from '../ui/progress';
 import { RCAEntry } from '../../types';
 
-interface AddRCADialogProps {
-  assetId: number;
-  onAddRCA: (rca: Omit<RCAEntry, 'id'>) => void;
-  children: React.ReactNode;
+interface EditRCADialogProps {
+  rca: RCAEntry;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdateRCA: (updatedRCA: RCAEntry) => void;
 }
 
-export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps) {
-  const [open, setOpen] = useState(false);
+export function EditRCADialog({ rca, isOpen, onClose, onUpdateRCA }: EditRCADialogProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
   const [correctiveActions, setCorrectiveActions] = useState('');
   const [preventiveActions, setPreventiveActions] = useState('');
   const [responsible, setResponsible] = useState('');
-  const [severity, setSeverity] = useState<'Low' | 'Medium' | 'High' | 'Critical'>('Medium');
+  const [status, setStatus] = useState<'Open' | 'In Progress' | 'Completed' | 'Closed'>('In Progress');
   const [cost, setCost] = useState('0');
 
   // 5 Whys Analysis
@@ -58,8 +58,59 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
     { id: 1, title: 'Basic Information', icon: AlertCircle },
     { id: 2, title: '5 Whys Analysis', icon: CheckCircle },
     { id: 3, title: 'Fishbone Analysis', icon: CheckCircle },
-    { id: 4, title: 'Review & Submit', icon: CheckCircle }
+    { id: 4, title: 'Review & Update', icon: CheckCircle }
   ];
+
+  // Populate form with existing RCA data
+  useEffect(() => {
+    if (isOpen && rca) {
+      // Basic Information
+      setFailureDate(rca.dateOccurred || rca.failureDate || '');
+      setProblemDescription(rca.problemDescription || '');
+      setImmediateActions(rca.immediateActions || '');
+      setCorrectiveActions(rca.correctiveActions || '');
+      setPreventiveActions(rca.preventiveActions || '');
+      setResponsible(rca.reportedBy || rca.responsible || '');
+      setStatus(rca.status as any || 'In Progress');
+      setCost((rca.costImpact || rca.cost || 0).toString());
+
+      // 5 Whys Analysis
+      if (rca.fiveWhys) {
+        setWhyQuestions({
+          why1: rca.fiveWhys.why1 || { question: '', answer: '' },
+          why2: rca.fiveWhys.why2 || { question: '', answer: '' },
+          why3: rca.fiveWhys.why3 || { question: '', answer: '' },
+          why4: rca.fiveWhys.why4 || { question: '', answer: '' },
+          why5: rca.fiveWhys.why5 || { question: '', answer: '' }
+        });
+        setRootCause(rca.fiveWhys.rootCause || rca.rootCauseSummary || '');
+      } else {
+        setRootCause(rca.rootCauseSummary || rca.rootCauses || '');
+      }
+
+      // Fishbone Analysis
+      if (rca.fishbone?.categories || rca.fishboneDiagram?.categories) {
+        const categories = rca.fishbone?.categories || rca.fishboneDiagram?.categories || [];
+        const fishboneData = {
+          people: '',
+          process: '',
+          equipment: '',
+          materials: '',
+          environment: '',
+          methods: ''
+        };
+
+        categories.forEach(cat => {
+          const categoryKey = cat.category.toLowerCase();
+          if (fishboneData.hasOwnProperty(categoryKey)) {
+            fishboneData[categoryKey as keyof typeof fishboneData] = cat.causes.join(', ');
+          }
+        });
+
+        setFishboneCategories(fishboneData);
+      }
+    }
+  }, [isOpen, rca]);
 
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -122,8 +173,8 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
     setError(null);
 
     try {
-      const rcaData = {
-        assetId,
+      const updatedRCAData = {
+        assetId: rca.assetId,
         failureDate,
         problemDescription,
         immediateActions,
@@ -131,7 +182,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
         correctiveActions,
         preventiveActions,
         responsible,
-        status: 'In Progress',
+        status,
         cost: parseFloat(cost) || 0,
         fiveWhys: {
           problem: problemDescription,
@@ -155,15 +206,15 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
         }
       };
 
-      console.log('Submitting RCA data:', rcaData);
+      console.log('Updating RCA entry:', updatedRCAData);
 
-      const response = await fetch('/api/rca', {
-        method: 'POST',
+      const response = await fetch(`/api/rca/${rca.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(rcaData)
+        body: JSON.stringify(updatedRCAData)
       });
 
       if (!response.ok) {
@@ -171,65 +222,39 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
-      const newRCA = await response.json();
-      onAddRCA(newRCA);
+      const updatedRCA = await response.json();
+      onUpdateRCA(updatedRCA);
 
-      // Reset form
-      setOpen(false);
+      // Reset and close
       setCurrentStep(1);
-      resetForm();
+      onClose();
 
     } catch (err) {
-      console.error('Error saving RCA:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save RCA entry. Please try again.');
+      console.error('Error updating RCA:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update RCA entry. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setFailureDate('');
-    setProblemDescription('');
-    setImmediateActions('');
-    setCorrectiveActions('');
-    setPreventiveActions('');
-    setResponsible('');
-    setSeverity('Medium');
-    setCost('0');
-    setWhyQuestions({
-      why1: { question: '', answer: '' },
-      why2: { question: '', answer: '' },
-      why3: { question: '', answer: '' },
-      why4: { question: '', answer: '' },
-      why5: { question: '', answer: '' }
-    });
-    setRootCause('');
-    setFishboneCategories({
-      people: '',
-      process: '',
-      equipment: '',
-      materials: '',
-      environment: '',
-      methods: ''
-    });
+  const handleClose = () => {
+    setCurrentStep(1);
     setError(null);
+    onClose();
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add RCA Entry
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Root Cause Analysis</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit className="h-5 w-5" />
+            Edit Root Cause Analysis
+          </DialogTitle>
           <DialogDescription>
-            Create a comprehensive RCA entry with problem analysis and corrective actions.
+            Update the RCA analysis with new information or corrections.
           </DialogDescription>
         </DialogHeader>
 
@@ -286,7 +311,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
                   Basic Information
                 </CardTitle>
                 <CardDescription>
-                  Provide essential details about the failure and immediate response.
+                  Update essential details about the failure and response.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -315,21 +340,21 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="severity">Severity Level</Label>
-                    <Select value={severity} onValueChange={(value: any) => setSeverity(value)} disabled={isLoading}>
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={status} onValueChange={(value: any) => setStatus(value)} disabled={isLoading}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Low">Low</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Critical">Critical</SelectItem>
+                        <SelectItem value="Open">Open</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cost">Estimated Cost Impact ($)</Label>
+                    <Label htmlFor="cost">Cost Impact ($)</Label>
                     <Input
                       id="cost"
                       type="number"
@@ -402,7 +427,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
                   5 Whys Analysis
                 </CardTitle>
                 <CardDescription>
-                  Drill down to the root cause by asking "why" five times.
+                  Update the root cause analysis by asking "why" five times.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -455,7 +480,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
                   Fishbone Analysis
                 </CardTitle>
                 <CardDescription>
-                  Identify potential causes across different categories.
+                  Update potential causes across different categories.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -486,10 +511,10 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5" />
-                  Review & Submit
+                  Review & Update
                 </CardTitle>
                 <CardDescription>
-                  Review your RCA entry before submitting.
+                  Review your changes before updating the RCA entry.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -498,7 +523,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
                     <h4 className="font-medium mb-2">Basic Information</h4>
                     <div className="space-y-1 text-sm text-muted-foreground">
                       <p><strong>Date:</strong> {failureDate}</p>
-                      <p><strong>Severity:</strong> <Badge variant={severity === 'Critical' ? 'destructive' : 'outline'}>{severity}</Badge></p>
+                      <p><strong>Status:</strong> <Badge variant={status === 'Completed' ? 'default' : 'outline'}>{status}</Badge></p>
                       <p><strong>Responsible:</strong> {responsible}</p>
                       <p><strong>Cost Impact:</strong> ${cost}</p>
                     </div>
@@ -546,7 +571,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+            <Button variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
 
@@ -556,7 +581,7 @@ export function AddRCADialog({ assetId, onAddRCA, children }: AddRCADialogProps)
               </Button>
             ) : (
               <Button onClick={handleSubmit} disabled={isLoading}>
-                {isLoading ? 'Creating RCA...' : 'Create RCA Entry'}
+                {isLoading ? 'Updating RCA...' : 'Update RCA Entry'}
               </Button>
             )}
           </div>

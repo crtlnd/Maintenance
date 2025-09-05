@@ -1,4 +1,4 @@
-// backend/models/asset.js - Enhanced version
+// backend/models/asset.js - Enhanced version with comprehensive RCA schema
 const mongoose = require('mongoose');
 
 const fmeaSchema = new mongoose.Schema({
@@ -11,11 +11,36 @@ const fmeaSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 });
 
+// UPDATED: Comprehensive RCA schema to match frontend structure
 const rcaSchema = new mongoose.Schema({
-  problem: { type: String, required: true },
-  whys: { type: [String], required: true, validate: [v => v.length === 5, 'Exactly 5 whys are required'] },
-  fishbone: { type: Object, default: {} },
+  assetId: { type: Number, required: true },
+  failureDate: { type: String, required: true },
+  problemDescription: { type: String, required: true },
+  immediateActions: { type: String, required: true },
+  rootCauses: { type: String },
+  correctiveActions: { type: String, required: true },
+  preventiveActions: { type: String, required: true },
+  responsible: { type: String, required: true },
+  status: { type: String, enum: ['Open', 'In Progress', 'Completed', 'Closed'], default: 'In Progress' },
+  cost: { type: Number, default: 0 },
+  fiveWhys: {
+    problem: String,
+    why1: { question: String, answer: String },
+    why2: { question: String, answer: String },
+    why3: { question: String, answer: String },
+    why4: { question: String, answer: String },
+    why5: { question: String, answer: String },
+    rootCause: String
+  },
+  fishboneDiagram: {
+    problem: String,
+    categories: [{
+      category: String,
+      causes: [String]
+    }]
+  },
   timestamp: { type: Date, default: Date.now },
+  createdBy: { type: String }
 });
 
 const rcmSchema = new mongoose.Schema({
@@ -150,7 +175,7 @@ const assetSchema = new mongoose.Schema({
     enabled: { type: Boolean, default: true }
   }],
 
-  // Existing analysis schemas
+  // Analysis schemas - UPDATED RCA schema
   fmea: [fmeaSchema],
   rca: [rcaSchema],
   rcm: [rcmSchema],

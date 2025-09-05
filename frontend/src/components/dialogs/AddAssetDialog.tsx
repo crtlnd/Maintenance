@@ -1,4 +1,4 @@
-// frontend/src/dialogs/AddAssetDialog.tsx - FIXED upgrade button navigation
+// frontend/src/dialogs/AddAssetDialog.tsx - SIMPLIFIED flattened structure
 import React, { useState } from 'react';
 import { Plus, Crown, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Alert, AlertDescription } from '../ui/alert';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { assetApi } from '../../../services/api'; // Use your existing API
+import { assetApi } from '../../../services/api';
 
 interface AddAssetDialogProps {
   onAddAsset: (asset: any) => number;
@@ -17,18 +17,20 @@ interface AddAssetDialogProps {
   triggerButton?: React.ReactNode;
 }
 
+// FIXED: Simplified to match backend expectations (flattened fields)
 interface AssetFormData {
   name: string;
   type: string;
+  location: string;
+  organization: string;
+  status: 'operational' | 'maintenance' | 'down' | 'retired';
+  condition: 'excellent' | 'good' | 'fair' | 'poor';
+  // Direct fields that backend expects
   manufacturer: string;
   model: string;
   serialNumber: string;
-  location: string;
-  organization: string;
   yearManufactured?: number;
   operatingHours?: number;
-  status: 'operational' | 'maintenance' | 'down' | 'retired';
-  condition: 'excellent' | 'good' | 'fair' | 'poor';
 }
 
 export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }: AddAssetDialogProps) {
@@ -37,22 +39,23 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // FIXED: Simplified initial state with flattened fields
   const [formData, setFormData] = useState<AssetFormData>({
     name: '',
     type: '',
-    manufacturer: '',
-    model: '',
-    serialNumber: '',
     location: '',
     organization: '',
     status: 'operational',
-    condition: 'good'
+    condition: 'good',
+    manufacturer: '',
+    model: '',
+    serialNumber: '',
   });
 
   const canAdd = canAddAsset(currentAssetCount);
   const assetLimit = getAssetLimit();
 
-  // DEBUG: Add debug logging
   console.log('DEBUG: canAdd:', canAdd, 'currentAssetCount:', currentAssetCount, 'assetLimit:', assetLimit);
 
   const handleInputChange = (field: keyof AssetFormData, value: string | number) => {
@@ -64,10 +67,10 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
     e.preventDefault();
     if (!canAdd) return;
 
-    // Basic validation
+    // FIXED: Simplified validation for flattened fields
     if (!formData.name.trim() || !formData.type.trim() || !formData.manufacturer.trim() ||
-        !formData.model.trim() || !formData.serialNumber.trim() || !formData.location.trim() ||
-        !formData.organization.trim()) {
+        !formData.model.trim() || !formData.serialNumber.trim() ||
+        !formData.location.trim() || !formData.organization.trim()) {
       setError('Please fill in all required fields');
       return;
     }
@@ -76,25 +79,24 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
     setError(null);
 
     try {
-      // FIXED: Use your existing API instead of dummy data
+      // FIXED: Send data exactly as backend expects it (flattened structure)
+      console.log('Sending to API:', formData);
       const newAsset = await assetApi.createAsset(formData);
-
       console.log('Asset created successfully:', newAsset);
 
-      // Update the parent component's state with the real saved asset
       onAddAsset(newAsset);
 
-      // Reset form and close dialog
+      // FIXED: Reset form with flattened structure
       setFormData({
         name: '',
         type: '',
-        manufacturer: '',
-        model: '',
-        serialNumber: '',
         location: '',
         organization: '',
         status: 'operational',
-        condition: 'good'
+        condition: 'good',
+        manufacturer: '',
+        model: '',
+        serialNumber: '',
       });
       setOpen(false);
     } catch (err) {
@@ -106,28 +108,27 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
   };
 
   const handleCancel = () => {
+    // FIXED: Reset with flattened structure
     setFormData({
       name: '',
       type: '',
-      manufacturer: '',
-      model: '',
-      serialNumber: '',
       location: '',
       organization: '',
       status: 'operational',
-      condition: 'good'
+      condition: 'good',
+      manufacturer: '',
+      model: '',
+      serialNumber: '',
     });
     setError(null);
     setOpen(false);
   };
 
-  // FIXED: Handle upgrade button click properly
   const handleUpgradeClick = () => {
     console.log('Upgrade button clicked - navigating to settings');
-    navigate('/settings'); // Changed from '/account' to '/settings' to match the route in App.tsx
+    navigate('/settings');
   };
 
-  // If asset limit reached, show upgrade button instead of dialog trigger
   if (!canAdd) {
     return (
       <Button
@@ -151,6 +152,7 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
           </Button>
         )}
       </DialogTrigger>
+
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Asset</DialogTitle>
@@ -180,6 +182,7 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
                   required
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="asset-type">Asset Type *</Label>
                 <Input
@@ -190,36 +193,7 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="manufacturer">Manufacturer *</Label>
-                <Input
-                  id="manufacturer"
-                  value={formData.manufacturer}
-                  onChange={(e) => handleInputChange('manufacturer', e.target.value)}
-                  placeholder="e.g., Caterpillar, John Deere"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="model">Model *</Label>
-                <Input
-                  id="model"
-                  value={formData.model}
-                  onChange={(e) => handleInputChange('model', e.target.value)}
-                  placeholder="e.g., 320D, L540"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="serial-number">Serial Number *</Label>
-                <Input
-                  id="serial-number"
-                  value={formData.serialNumber}
-                  onChange={(e) => handleInputChange('serialNumber', e.target.value)}
-                  placeholder="e.g., SN123456789"
-                  required
-                />
-              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="location">Location *</Label>
                 <Input
@@ -230,6 +204,7 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
                   required
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="organization">Organization *</Label>
                 <Input
@@ -240,29 +215,7 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="year-manufactured">Year Manufactured</Label>
-                <Input
-                  id="year-manufactured"
-                  type="number"
-                  value={formData.yearManufactured || ''}
-                  onChange={(e) => handleInputChange('yearManufactured', parseInt(e.target.value) || undefined)}
-                  min={1900}
-                  max={new Date().getFullYear()}
-                  placeholder="e.g., 2020"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="operating-hours">Operating Hours</Label>
-                <Input
-                  id="operating-hours"
-                  type="number"
-                  value={formData.operatingHours || ''}
-                  onChange={(e) => handleInputChange('operatingHours', parseInt(e.target.value) || undefined)}
-                  min={0}
-                  placeholder="Current operating hours"
-                />
-              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
@@ -277,6 +230,7 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="condition">Condition</Label>
                 <Select value={formData.condition} onValueChange={(value) => handleInputChange('condition', value)}>
@@ -290,6 +244,70 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
                     <SelectItem value="poor">Poor</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* FIXED: Technical Specifications Section with flattened fields */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Technical Specifications</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="manufacturer">Manufacturer *</Label>
+                <Input
+                  id="manufacturer"
+                  value={formData.manufacturer}
+                  onChange={(e) => handleInputChange('manufacturer', e.target.value)}
+                  placeholder="e.g., Caterpillar, John Deere"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="model">Model *</Label>
+                <Input
+                  id="model"
+                  value={formData.model}
+                  onChange={(e) => handleInputChange('model', e.target.value)}
+                  placeholder="e.g., 320D, L540"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="serial-number">Serial Number *</Label>
+                <Input
+                  id="serial-number"
+                  value={formData.serialNumber}
+                  onChange={(e) => handleInputChange('serialNumber', e.target.value)}
+                  placeholder="e.g., SN123456789"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="year-manufactured">Year Manufactured</Label>
+                <Input
+                  id="year-manufactured"
+                  type="number"
+                  value={formData.yearManufactured || ''}
+                  onChange={(e) => handleInputChange('yearManufactured', parseInt(e.target.value) || undefined)}
+                  min={1900}
+                  max={new Date().getFullYear()}
+                  placeholder="e.g., 2020"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="operating-hours">Operating Hours</Label>
+                <Input
+                  id="operating-hours"
+                  type="number"
+                  value={formData.operatingHours || ''}
+                  onChange={(e) => handleInputChange('operatingHours', parseInt(e.target.value) || undefined)}
+                  min={0}
+                  placeholder="Current operating hours"
+                />
               </div>
             </div>
           </div>
@@ -318,7 +336,7 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
                 style={{
                   width: `${Math.min((currentAssetCount / (assetLimit as number)) * 100, 100)}%`,
                 }}
-              ></div>
+              />
             </div>
           </div>
         )}

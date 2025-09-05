@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Calculator } from 'lucide-react';
+import { Plus, Calculator, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Input } from '../ui/input';
@@ -8,8 +8,10 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { Alert, AlertDescription } from '../ui/alert';
 import { DatePicker } from '../ui/date-picker';
 import { FMEAEntry } from '../../types';
+import { assetApi } from '../../../services/api'; // Import API functions
 
 interface AddFMEADialogProps {
   assetId: number;
@@ -31,6 +33,10 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
   const [responsible, setResponsible] = useState('');
   const [dueDate, setDueDate] = useState('');
 
+  // FIXED: Add loading and error state
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const rpn = severity * occurrence * detection;
 
   const getRPNColor = (rpn: number) => {
@@ -45,43 +51,65 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
     return 'Low Risk';
   };
 
-  const handleSubmit = () => {
+  // FIXED: Updated handleSubmit to make actual API call
+  const handleSubmit = async () => {
     if (!component || !failureMode || !effects || !causes || !controls || !actions || !responsible || !dueDate) {
+      setError('Please fill in all required fields');
       return;
     }
 
-    const newFMEAEntry: Omit<FMEAEntry, 'id'> = {
-      assetId,
-      component,
-      failureMode,
-      effects,
-      severity,
-      causes,
-      occurrence,
-      controls,
-      detection,
-      rpn,
-      actions,
-      responsible,
-      dueDate,
-      status: 'Open'
-    };
+    setIsLoading(true);
+    setError(null);
 
-    onAddFMEA([newFMEAEntry]);
-    
-    // Reset form
-    setComponent('');
-    setFailureMode('');
-    setEffects('');
-    setSeverity(1);
-    setCauses('');
-    setOccurrence(1);
-    setControls('');
-    setDetection(1);
-    setActions('');
-    setResponsible('');
-    setDueDate('');
-    setOpen(false);
+    try {
+      // FIXED: Create FMEA data structure that matches backend expectations
+      const fmeaData = {
+        assetId,
+        component,
+        failureMode,
+        effects,
+        severity,
+        causes,
+        occurrence,
+        controls,
+        detection,
+        rpn,
+        actions,
+        responsible,
+        dueDate,
+        status: 'Open'
+      };
+
+      console.log('DEBUG: Sending FMEA data to API:', fmeaData);
+
+      // FIXED: Call the actual API to save FMEA data
+      const savedFMEA = await assetApi.addFMEA(fmeaData);
+
+      console.log('DEBUG: FMEA saved successfully:', savedFMEA);
+
+      // Update parent component with the saved data
+      onAddFMEA([savedFMEA]);
+
+      // Reset form
+      setComponent('');
+      setFailureMode('');
+      setEffects('');
+      setSeverity(1);
+      setCauses('');
+      setOccurrence(1);
+      setControls('');
+      setDetection(1);
+      setActions('');
+      setResponsible('');
+      setDueDate('');
+      setOpen(false);
+
+    } catch (err) {
+      console.error('Error saving FMEA:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save FMEA entry. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -100,6 +128,14 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
           </DialogDescription>
         </DialogHeader>
 
+        {/* FIXED: Add error display */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="space-y-6">
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -110,6 +146,7 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
                 value={component}
                 onChange={(e) => setComponent(e.target.value)}
                 placeholder="e.g., Hydraulic Pump, Control System"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -119,6 +156,7 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
                 value={failureMode}
                 onChange={(e) => setFailureMode(e.target.value)}
                 placeholder="e.g., Fails to start, Overheating"
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -131,6 +169,7 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
               onChange={(e) => setEffects(e.target.value)}
               placeholder="Describe what happens when this failure occurs..."
               rows={3}
+              disabled={isLoading}
             />
           </div>
 
@@ -142,6 +181,7 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
               onChange={(e) => setCauses(e.target.value)}
               placeholder="Describe what could cause this failure mode..."
               rows={3}
+              disabled={isLoading}
             />
           </div>
 
@@ -153,6 +193,7 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
               onChange={(e) => setControls(e.target.value)}
               placeholder="Describe current preventive measures and detection methods..."
               rows={2}
+              disabled={isLoading}
             />
           </div>
 
@@ -168,7 +209,11 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="severity">Severity (Impact)</Label>
-                  <Select value={severity.toString()} onValueChange={(value) => setSeverity(parseInt(value))}>
+                  <Select
+                    value={severity.toString()}
+                    onValueChange={(value) => setSeverity(parseInt(value))}
+                    disabled={isLoading}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -184,7 +229,11 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
 
                 <div className="space-y-2">
                   <Label htmlFor="occurrence">Occurrence (Frequency)</Label>
-                  <Select value={occurrence.toString()} onValueChange={(value) => setOccurrence(parseInt(value))}>
+                  <Select
+                    value={occurrence.toString()}
+                    onValueChange={(value) => setOccurrence(parseInt(value))}
+                    disabled={isLoading}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -200,7 +249,11 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
 
                 <div className="space-y-2">
                   <Label htmlFor="detection">Detection (Ability to Detect)</Label>
-                  <Select value={detection.toString()} onValueChange={(value) => setDetection(parseInt(value))}>
+                  <Select
+                    value={detection.toString()}
+                    onValueChange={(value) => setDetection(parseInt(value))}
+                    disabled={isLoading}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -244,6 +297,7 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
               onChange={(e) => setActions(e.target.value)}
               placeholder="Describe actions to reduce risk (improve controls, reduce occurrence, etc.)..."
               rows={3}
+              disabled={isLoading}
             />
           </div>
 
@@ -255,6 +309,7 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
                 value={responsible}
                 onChange={(e) => setResponsible(e.target.value)}
                 placeholder="e.g., John Smith, Maintenance Team"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -264,17 +319,18 @@ export function AddFMEADialog({ assetId, assetName, onAddFMEA }: AddFMEADialogPr
                 onChange={(value) => setDueDate(value)}
                 placeholder="Select target completion date"
                 defaultToTomorrow={true}
+                disabled={isLoading}
               />
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>
-            Add FMEA Entry
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? 'Saving FMEA Entry...' : 'Add FMEA Entry'}
           </Button>
         </DialogFooter>
       </DialogContent>

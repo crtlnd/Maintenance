@@ -29,23 +29,24 @@ export function QuickAddTaskDialog({
     priority: 'medium' as const,
   });
 
+  const isFormValid = formData.assetId && formData.description && formData.nextDue && formData.responsible && formData.responsibleEmail;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.assetId || !formData.description || !formData.nextDue || !formData.responsible || !formData.responsibleEmail) {
+    if (!isFormValid) {
       return;
     }
 
-    // Create task with smart defaults
     const task: Omit<MaintenanceTask, 'id'> = {
       assetId: parseInt(formData.assetId),
       taskType: 'preventive',
       description: formData.description,
-      frequency: 'As needed', // Default frequency
+      frequency: 'As needed',
       hoursInterval: 0,
-      lastCompleted: new Date().toISOString().split('T')[0], // Today
+      lastCompleted: new Date().toISOString().split('T')[0],
       nextDue: formData.nextDue,
-      estimatedDuration: '1 hour', // Default duration
+      estimatedDuration: '1 hour',
       responsible: formData.responsible,
       responsibleEmail: formData.responsibleEmail || undefined,
       responsiblePhone: formData.responsiblePhone || undefined,
@@ -68,10 +69,23 @@ export function QuickAddTaskDialog({
     });
   };
 
+  const handleContactChange = (contact: any) => {
+    setFormData(prev => ({
+      ...prev,
+      responsible: contact.name || '',
+      responsibleEmail: contact.email || '',
+      responsiblePhone: contact.phone || ''
+    }));
+  };
+
   const getTriggerButton = () => {
     if (triggerVariant === 'fab') {
       return (
-        <Button size="lg" className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50">
+        <Button
+          size="lg"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700 border-0 z-50"
+          aria-label="Quick Add Task"
+        >
           <Plus className="h-6 w-6" />
         </Button>
       );
@@ -79,17 +93,26 @@ export function QuickAddTaskDialog({
 
     if (triggerVariant === 'primary') {
       return (
-        <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+        <Button
+          size="default"
+          className="bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-sm hover:shadow-md transition-all duration-200"
+        >
           <Plus className="h-4 w-4 mr-2" />
-          Quick Add Task
+          <span className="hidden sm:inline">Quick Add Task</span>
+          <span className="sm:hidden">Add Task</span>
         </Button>
       );
     }
 
     return (
-      <Button variant="outline">
+      <Button
+        variant="outline"
+        size="default"
+        className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+      >
         <Zap className="h-4 w-4 mr-2" />
-        Quick Add
+        <span className="hidden sm:inline">Quick Add</span>
+        <span className="sm:hidden">Add</span>
       </Button>
     );
   };
@@ -99,7 +122,7 @@ export function QuickAddTaskDialog({
 
   // Don't render the dialog if there are no valid assets
   if (validAssets.length === 0) {
-    return null; // or return a disabled button with tooltip
+    return null;
   }
 
   return (
@@ -107,7 +130,7 @@ export function QuickAddTaskDialog({
       <DialogTrigger asChild>
         {getTriggerButton()}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-blue-600" />
@@ -147,7 +170,7 @@ export function QuickAddTaskDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="nextDue">Due Date *</Label>
               <DatePicker
@@ -174,20 +197,31 @@ export function QuickAddTaskDialog({
 
           <div className="space-y-2">
             <Label htmlFor="contact">Assign To *</Label>
-            <ContactSelector
-              value={formData.responsible && formData.responsibleEmail ? {
-                name: formData.responsible,
-                email: formData.responsibleEmail,
-                phone: formData.responsiblePhone
-              } : undefined}
-              onChange={(contact) => setFormData(prev => ({
-                ...prev,
-                responsible: contact.name,
-                responsibleEmail: contact.email,
-                responsiblePhone: contact.phone || ''
-              }))}
-              placeholder="Select team member or enter contact details"
-            />
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Name *"
+                  value={formData.responsible}
+                  onChange={(e) => setFormData(prev => ({ ...prev, responsible: e.target.value }))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <input
+                  type="email"
+                  placeholder="Email *"
+                  value={formData.responsibleEmail}
+                  onChange={(e) => setFormData(prev => ({ ...prev, responsibleEmail: e.target.value }))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              <input
+                type="tel"
+                placeholder="Phone (optional)"
+                value={formData.responsiblePhone}
+                onChange={(e) => setFormData(prev => ({ ...prev, responsiblePhone: e.target.value }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
           </div>
 
           <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
@@ -196,11 +230,15 @@ export function QuickAddTaskDialog({
             </p>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="order-2 sm:order-1">
               Cancel
             </Button>
-            <Button type="submit" disabled={!formData.assetId || !formData.description || !formData.nextDue || !formData.responsible || !formData.responsibleEmail}>
+            <Button
+              type="submit"
+              disabled={!isFormValid}
+              className="bg-blue-600 hover:bg-blue-700 text-white order-1 sm:order-2"
+            >
               Create Task
             </Button>
           </div>

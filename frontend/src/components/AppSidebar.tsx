@@ -1,16 +1,15 @@
 import React from 'react';
-import { Shapes, ClipboardList, Bot, Users } from 'lucide-react';
+import { Shapes, ClipboardList, Bot, Users, Brain, MessageSquare, AlertTriangle, TrendingUp, Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Asset } from '../types';
-
-const caseyUptimeLogo = null; // Temporarily remove logo
 
 interface User {
   firstName?: string;
   lastName?: string;
   avatar?: string;
   role?: string;
+  subscriptionTier?: string;
 }
 
 interface AppSidebarProps {
@@ -25,40 +24,106 @@ const iconMap = {
   ClipboardList,
   Bot,
   Users,
+  Brain,
+  MessageSquare,
+  AlertTriangle,
+  TrendingUp,
+  Settings,
 };
 
 function AppSidebar({ user, plan, assets, setAssets }: AppSidebarProps) {
-  const menuItems = [
+  const isAIPowered = plan === 'ai-powered' || user?.subscriptionTier === 'ai-powered';
+
+  const mainMenuItems = [
     { title: 'Asset Dashboard', icon: 'Shapes', path: '/' },
     { title: 'Task List', icon: 'ClipboardList', path: '/maintenance' },
-    { title: 'AI Assistant', icon: 'Bot', path: '/fmea' },
     { title: 'Service Providers', icon: 'Users', path: '/service-providers' },
   ];
 
+  const aiMenuItems = [
+    { title: 'AI Insights', icon: 'Brain', path: '/ai-insights' },
+    { title: 'AI Chat', icon: 'MessageSquare', path: '/ai-chat' },
+    { title: 'Risk Analysis', icon: 'AlertTriangle', path: '/ai-risk-analysis' },
+    { title: 'Predictive Analysis', icon: 'TrendingUp', path: '/ai-predictive' },
+  ];
+
+  const renderMenuItem = (item: any) => {
+    const IconComponent = typeof item.icon === 'string'
+      ? iconMap[item.icon as keyof typeof iconMap]
+      : item.icon;
+
+    return (
+      <NavLink
+        key={item.title}
+        to={item.path}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            isActive
+              ? 'bg-blue-100 text-blue-600'
+              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          }`
+        }
+      >
+        <IconComponent className="h-5 w-5" />
+        <span>{item.title}</span>
+      </NavLink>
+    );
+  };
+
   return (
     <div className="h-full bg-white border-r border-gray-200 flex flex-col">
-      {/* Header */}
+      {/* Header with Casey Logo */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-center">
-          {caseyUptimeLogo ? (
-            <img src={caseyUptimeLogo} alt="Casey Uptime" className="h-12 w-auto" />
-          ) : (
-            <div className="h-12 w-auto flex items-center justify-center text-sm font-semibold text-gray-900">
-              Casey Uptime
-            </div>
-          )}
+          <img
+            src="/src/assets/casey-logo.jpg"
+            alt="Casey"
+            className="h-10 w-auto"
+          />
         </div>
+        {/* AI Plan Indicator */}
+        {isAIPowered && (
+          <div className="mt-3 flex items-center justify-center">
+            <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+              <Brain className="h-3 w-3" />
+              AI-Powered
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Navigation Menu */}
       <div className="flex-1 p-2">
-        <nav className="space-y-1">
-          {menuItems.map((item) => {
-            const IconComponent = iconMap[item.icon as keyof typeof iconMap];
-            return (
+        <nav className="space-y-4">
+          {/* Main Navigation */}
+          <div>
+            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Main
+            </div>
+            <div className="space-y-1">
+              {mainMenuItems.map((item) => renderMenuItem(item))}
+            </div>
+          </div>
+
+          {/* AI Features Navigation */}
+          <div>
+            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+              <Brain className="h-3 w-3" />
+              AI Features
+            </div>
+            <div className="space-y-1">
+              {aiMenuItems.map((item) => renderMenuItem(item))}
+            </div>
+          </div>
+
+          {/* Legacy AI Assistant (for backwards compatibility) */}
+          <div>
+            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Legacy
+            </div>
+            <div className="space-y-1">
               <NavLink
-                key={item.title}
-                to={item.path}
+                to="/fmea"
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive
@@ -67,16 +132,11 @@ function AppSidebar({ user, plan, assets, setAssets }: AppSidebarProps) {
                   }`
                 }
               >
-                <IconComponent className="h-5 w-5" />
-                <span>{item.title}</span>
-                {item.path === '/fmea' && plan !== 'ai-powered' && (
-                  <div className="ml-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-2 py-0.5 rounded-full">
-                    Pro
-                  </div>
-                )}
+                <Bot className="h-5 w-5" />
+                <span>AI Assistant (Legacy)</span>
               </NavLink>
-            );
-          })}
+            </div>
+          </div>
         </nav>
       </div>
 
@@ -102,7 +162,9 @@ function AppSidebar({ user, plan, assets, setAssets }: AppSidebarProps) {
             <span className="text-sm font-medium truncate">
               {user?.firstName ?? 'User'} {user?.lastName ?? ''}
             </span>
-            <span className="text-xs text-gray-500 truncate">{user?.role ?? 'Unknown'}</span>
+            <span className="text-xs text-gray-500 truncate">
+              {isAIPowered ? 'AI-Powered Plan' : (user?.role ?? 'Basic Plan')}
+            </span>
           </div>
         </NavLink>
       </div>

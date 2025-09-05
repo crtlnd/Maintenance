@@ -1,5 +1,5 @@
-// frontend/src/dialogs/EditAssetDialog.tsx - FIXED VERSION using existing API
-import React, { useState } from 'react';
+// frontend/src/dialogs/EditAssetDialog.tsx - FIXED to use flattened structure
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { CalendarDays, Settings, FileText, AlertTriangle, CheckCircle, Clock, Wrench, AlertCircle } from 'lucide-react';
 import { Asset } from '../../types';
-import { assetApi } from '../../../services/api'; // Use your existing API
+import { assetApi } from '../../../services/api';
 
 interface EditAssetDialogProps {
   isOpen: boolean;
@@ -48,17 +48,29 @@ const conditionOptions = [
 ];
 
 export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDialogProps) {
-  const [formData, setFormData] = useState<Asset>({
-    ...asset,
-    // Ensure all optional fields have default values
-    specifications: asset.specifications || {},
-    maintenanceHistory: asset.maintenanceHistory || [],
-    condition: asset.condition || 'good',
-    lastMaintenanceDate: asset.lastMaintenanceDate || '',
-    nextMaintenanceDate: asset.nextMaintenanceDate || '',
-    warrantyExpiry: asset.warrantyExpiry || '',
-    notes: asset.notes || ''
-  });
+  // FIXED: Initialize form data to read from flattened fields
+  const getInitialFormData = (asset: Asset) => {
+    console.log('DEBUG: Raw asset data for edit:', asset);
+
+    return {
+      ...asset,
+      // Ensure all optional fields have default values
+      maintenanceHistory: asset.maintenanceHistory || [],
+      condition: asset.condition || 'good',
+      lastMaintenanceDate: asset.lastMaintenanceDate || '',
+      nextMaintenanceDate: asset.nextMaintenanceDate || '',
+      warrantyExpiry: asset.warrantyExpiry || '',
+      notes: asset.notes || '',
+      // FIXED: Read from flattened fields that are actually stored in database
+      manufacturer: (asset as any).manufacturer || '',
+      model: (asset as any).model || '',
+      serialNumber: (asset as any).serialNumber || '',
+      yearManufactured: (asset as any).yearManufactured || '',
+      operatingHours: (asset as any).operatingHours || '',
+    };
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData(asset));
 
   const [newMaintenanceEntry, setNewMaintenanceEntry] = useState({
     date: '',
@@ -71,22 +83,17 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (field: keyof Asset, value: any) => {
+  // Update form data when asset prop changes
+  useEffect(() => {
+    console.log('DEBUG: Asset prop changed, updating form data');
+    setFormData(getInitialFormData(asset));
+    setError(null);
+  }, [asset]);
+
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
-    }));
-    // Clear error when user makes changes
-    if (error) setError(null);
-  };
-
-  const handleSpecificationChange = (key: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      specifications: {
-        ...prev.specifications,
-        [key]: value
-      }
     }));
     if (error) setError(null);
   };
@@ -132,13 +139,14 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
     setIsLoading(true);
     setError(null);
 
+    console.log('DEBUG: Asset ID being sent:', asset.id);
+    console.log('DEBUG: Asset ID type:', typeof asset.id);
+    console.log('DEBUG: Form data being sent:', formData);
+
     try {
-      // FIXED: Use your existing API instead of just calling onSave
+      console.log('DEBUG: Saving asset with flattened data:', formData);
       const updatedAsset = await assetApi.updateAsset(asset.id, formData);
-
-      console.log('Asset updated successfully:', updatedAsset);
-
-      // Update the parent component's state with the real updated asset
+      console.log('DEBUG: Asset updated successfully:', updatedAsset);
       onSave(updatedAsset);
       onClose();
     } catch (err) {
@@ -150,17 +158,7 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
   };
 
   const handleCancel = () => {
-    // Reset form data to original asset data
-    setFormData({
-      ...asset,
-      specifications: asset.specifications || {},
-      maintenanceHistory: asset.maintenanceHistory || [],
-      condition: asset.condition || 'good',
-      lastMaintenanceDate: asset.lastMaintenanceDate || '',
-      nextMaintenanceDate: asset.nextMaintenanceDate || '',
-      warrantyExpiry: asset.warrantyExpiry || '',
-      notes: asset.notes || ''
-    });
+    setFormData(getInitialFormData(asset));
     setError(null);
     onClose();
   };
@@ -223,19 +221,12 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
                 </div>
                 <div>
                   <Label htmlFor="type">Asset Type</Label>
-                  <Select
+                  <Input
+                    id="type"
                     value={formData.type}
-                    onValueChange={(value) => handleInputChange('type', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select asset type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assetTypes.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => handleInputChange('type', e.target.value)}
+                    placeholder="e.g., Excavator, Pump, Generator"
+                  />
                 </div>
               </div>
 
@@ -299,36 +290,40 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
                   <Label htmlFor="manufacturer">Manufacturer</Label>
                   <Input
                     id="manufacturer"
-                    value={formData.specifications?.manufacturer || ''}
-                    onChange={(e) => handleSpecificationChange('manufacturer', e.target.value)}
+                    value={formData.manufacturer || ''}
+                    onChange={(e) => handleInputChange('manufacturer', e.target.value)}
+                    placeholder="e.g., Caterpillar"
                   />
                 </div>
                 <div>
                   <Label htmlFor="model">Model</Label>
                   <Input
                     id="model"
-                    value={formData.specifications?.model || ''}
-                    onChange={(e) => handleSpecificationChange('model', e.target.value)}
+                    value={formData.model || ''}
+                    onChange={(e) => handleInputChange('model', e.target.value)}
+                    placeholder="e.g., 320D"
                   />
                 </div>
                 <div>
                   <Label htmlFor="serialNumber">Serial Number</Label>
                   <Input
                     id="serialNumber"
-                    value={formData.specifications?.serialNumber || ''}
-                    onChange={(e) => handleSpecificationChange('serialNumber', e.target.value)}
+                    value={formData.serialNumber || ''}
+                    onChange={(e) => handleInputChange('serialNumber', e.target.value)}
+                    placeholder="e.g., SN123456789"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="installationDate">Installation Date</Label>
+                  <Label htmlFor="yearManufactured">Year Manufactured</Label>
                   <Input
-                    id="installationDate"
-                    type="date"
-                    value={formData.specifications?.installationDate || ''}
-                    onChange={(e) => handleSpecificationChange('installationDate', e.target.value)}
+                    id="yearManufactured"
+                    type="number"
+                    value={formData.yearManufactured || ''}
+                    onChange={(e) => handleInputChange('yearManufactured', e.target.value)}
+                    placeholder="e.g., 2020"
                   />
                 </div>
                 <div>
@@ -341,12 +336,13 @@ export function EditAssetDialog({ isOpen, onClose, asset, onSave }: EditAssetDia
                   />
                 </div>
                 <div>
-                  <Label htmlFor="capacity">Capacity/Rating</Label>
+                  <Label htmlFor="operatingHours">Operating Hours</Label>
                   <Input
-                    id="capacity"
-                    placeholder="e.g., 100kW, 500L/min"
-                    value={formData.specifications?.capacity || ''}
-                    onChange={(e) => handleSpecificationChange('capacity', e.target.value)}
+                    id="operatingHours"
+                    type="number"
+                    value={formData.operatingHours || ''}
+                    onChange={(e) => handleInputChange('operatingHours', e.target.value)}
+                    placeholder="Current operating hours"
                   />
                 </div>
               </div>
