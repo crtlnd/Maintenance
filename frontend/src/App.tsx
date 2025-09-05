@@ -19,6 +19,9 @@ import {
   initialServiceProviders
 } from './data/initialData';
 
+// Import the new InvitationHandler component
+import InvitationHandler from './components/InvitationHandler';
+
 class ErrorBoundary extends Component {
   state = { hasError: false };
 
@@ -250,11 +253,13 @@ function AppContent() {
             </MainLayout>
           )
         ) : (
-          // Unauthenticated routes
+          // Unauthenticated routes - UPDATED SECTION
           <div className="flex min-h-screen w-full flex-col bg-muted/40">
             <Routes>
-              <Route path="*" element={<LandingPage onGetStarted={handleGetStarted} onLogin={handleLogin} />} />
+              {/* Add the invitation handler route */}
+              <Route path="/join-organization" element={<InvitationHandler />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="*" element={<LandingPage onGetStarted={handleGetStarted} onLogin={handleLogin} />} />
             </Routes>
           </div>
         )}

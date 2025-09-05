@@ -7,7 +7,7 @@ import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Separator } from '../ui/separator';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import { NotificationPreferences } from '../../types';
 import { NotificationService } from '../../utils/notifications';
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Building, Briefcase } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -6,14 +7,16 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SignupFormProps {
   onSwitchToLogin: () => void;
+  inviteToken?: string; // NEW: Accept invite token prop
 }
 
-export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
+export function SignupForm({ onSwitchToLogin, inviteToken }: SignupFormProps) {
   const { signup } = useAuth();
+  const navigate = useNavigate(); // NEW: For navigation after invitation acceptance
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -50,6 +53,29 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // NEW: Function to accept invitation after signup
+  const acceptInvitation = async (authToken: string) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/team/invitation/${inviteToken}/accept`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to accept invitation');
+      }
+
+      console.log('Invitation accepted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -67,7 +93,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     }
     setIsLoading(true);
     try {
-      console.log('Starting signup process with data:', JSON.stringify({ ...formData, plan: selectedPlan }, null, 2));
+      console.log('Starting signup process with data:', JSON.stringify({ ...formData, plan: selectedPlan, hasInvitation: !!inviteToken }, null, 2));
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       const signupResponse = await signup(
@@ -99,6 +125,24 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         setIsLoading(false);
         return;
       }
+
+      // NEW: If there's an invitation token, accept it and skip Stripe
+      if (inviteToken) {
+        console.log('Processing invitation acceptance...');
+        const invitationAccepted = await acceptInvitation(token);
+
+        if (invitationAccepted) {
+          console.log('Invitation accepted, redirecting to dashboard...');
+          navigate('/dashboard?joined=true');
+          return;
+        } else {
+          console.error('Failed to accept invitation, but continuing to dashboard...');
+          navigate('/dashboard');
+          return;
+        }
+      }
+
+      // EXISTING: Continue with Stripe flow if no invitation
       const selectedPlanData = plans.find((plan) => plan.name === selectedPlan);
       if (!selectedPlanData) {
         console.error('Selected plan not found');
@@ -151,27 +195,32 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl">Create your account</CardTitle>
-        <CardDescription>Get started with Maintenance Manager!</CardDescription>
+        <CardDescription>
+          {inviteToken ? 'Complete your registration to join the organization!' : 'Get started with Maintenance Manager!'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-6">Choose Your Plan</h3>
-          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
-            {plans.map((plan) => (
-              <Card
-                key={plan.name}
-                className={`p-4 cursor-pointer transition-all hover:shadow-md ${
-                  selectedPlan === plan.name ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setSelectedPlan(plan.name)}
-              >
-                <h4 className="text-lg font-bold mb-2">{plan.name}</h4>
-                <p className="text-xl font-semibold mb-2">{plan.price}<span className="text-sm font-normal text-gray-600">/{plan.period}</span></p>
-                <p className="text-sm text-gray-600 leading-relaxed">{plan.description}</p>
-              </Card>
-            ))}
+        {/* NEW: Hide plan selection if user has an invitation */}
+        {!inviteToken && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-6">Choose Your Plan</h3>
+            <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+              {plans.map((plan) => (
+                <Card
+                  key={plan.name}
+                  className={`p-4 cursor-pointer transition-all hover:shadow-md ${
+                    selectedPlan === plan.name ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setSelectedPlan(plan.name)}
+                >
+                  <h4 className="text-lg font-bold mb-2">{plan.name}</h4>
+                  <p className="text-xl font-semibold mb-2">{plan.price}<span className="text-sm font-normal text-gray-600">/{plan.period}</span></p>
+                  <p className="text-sm text-gray-600 leading-relaxed">{plan.description}</p>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -321,10 +370,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating account...
+                {inviteToken ? 'Creating account and joining organization...' : 'Creating account...'}
               </>
             ) : (
-              'Create account'
+              inviteToken ? 'Create account and join organization' : 'Create account'
             )}
           </Button>
         </form>

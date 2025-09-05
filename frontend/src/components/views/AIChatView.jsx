@@ -4,7 +4,7 @@ import { Send, MessageSquare, Loader2, AlertCircle, User, Bot } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import aiService from '../../../services/aiService';
+import aiService from '../../../Services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
 
 function AIChatView() {

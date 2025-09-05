@@ -23,7 +23,7 @@ import {
   Clock,
   DollarSign
 } from 'lucide-react';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function ServiceProviderProfileView() {
   const { user, updateProfile } = useAuth();

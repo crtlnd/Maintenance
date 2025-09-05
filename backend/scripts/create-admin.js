@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const User = require('../models/user');
+const User = require('../models/user.js');
 require('dotenv').config();
 
 async function createAdmin() {
@@ -12,7 +12,7 @@ async function createAdmin() {
     const existingAdmin = await User.findOne({
       $or: [
         { username: 'admin' },
-        { email: 'admin@casey.com' }
+        { email: 'admin@caseyuptime.com' }
       ]
     });
 
@@ -27,7 +27,7 @@ async function createAdmin() {
 
     const admin = new User({
       username: 'admin',
-      email: 'admin@casey.com',
+      email: 'admin@caseyuptime.com',
       firstName: 'Admin',
       lastName: 'User',
       company: 'Casey Platform',
@@ -42,7 +42,7 @@ async function createAdmin() {
     console.log('Admin user created successfully!');
     console.log('Username: admin');
     console.log('Password: admin123');
-    console.log('Email: admin@casey.com');
+    console.log('Email: admin@caseyuptime.com');
 
     process.exit(0);
   } catch (error) {

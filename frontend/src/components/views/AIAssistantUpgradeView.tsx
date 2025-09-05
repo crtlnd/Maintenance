@@ -3,7 +3,7 @@ import { Bot, Zap, TrendingUp, Shield, Clock, ArrowRight, CheckCircle, Star, Spa
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner@2.0.3';
 
 interface AIAssistantUpgradeViewProps {

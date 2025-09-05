@@ -4,7 +4,7 @@ import caseyUptimeLogo from 'figma:asset/b0281f1af0d4ecb0182aeab92b8439ecbadd543
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter } from './ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ServiceProviderView } from '../types';
-import { useAuth } from '../utils/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ServiceProviderSidebarProps {
   currentView: ServiceProviderView;

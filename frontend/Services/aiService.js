@@ -1,4 +1,4 @@
-// frontend/services/aiService.js
+// frontend/Services/aiService.js
 
 export class AIService {
   constructor() {

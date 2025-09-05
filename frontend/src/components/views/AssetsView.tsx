@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronRight, Settings, Plus, Wrench, FileText, BarChart3, Brain, AlertTriangle, Search, Eye, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronRight, Settings, Eye, ArrowLeft, CheckSquare, Zap, BarChart3, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Asset, FMEAEntry, MaintenanceTask } from '../../types';
 import { getConditionColor } from '../../utils/helpers';
 import { AddAssetDialog } from '../dialogs/AddAssetDialog';
 import { EditAssetDialog } from '../dialogs/EditAssetDialog';
 import { QuickAddTaskDialog } from '../dialogs/QuickAddTaskDialog';
 import { DemoBanner } from '../ui/DemoBanner';
+import { BulkOperationsPanel } from './BulkOperationsPanel';
+import { AssetFiltersPanel, FilterState, SortState } from './AssetFiltersPanel';
+import { EmptyAssetState } from './EmptyAssetState';
+import { AssetCard } from './AssetCard';
+import { AssetStatsPanel } from './AssetStatsPanel';
 
 interface AssetsViewProps {
   assets: Asset[];
@@ -22,120 +28,6 @@ interface AssetsViewProps {
   onCreateDemoData: () => Promise<void>;
 }
 
-// Empty State Component
-function EmptyAssetState({
-  onAddAsset,
-  currentAssetCount,
-  onCreateDemoData
-}: {
-  onAddAsset: (asset: Omit<Asset, 'id'>) => number;
-  currentAssetCount: number;
-  onCreateDemoData: () => Promise<void>;
-}) {
-  const [isAddingDemo, setIsAddingDemo] = useState(false);
-
-  const handleViewDemo = async () => {
-    console.log('Demo button clicked - delegating to App.tsx');
-    setIsAddingDemo(true);
-
-    try {
-      await onCreateDemoData();
-    } catch (error) {
-      console.error('Error creating demo data:', error);
-    } finally {
-      setIsAddingDemo(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] text-center space-y-6">
-      <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center">
-        <Wrench className="w-12 h-12 text-blue-600" />
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-2xl font-semibold">Welcome to Casey!</h3>
-        <p className="text-muted-foreground max-w-md">
-          Start managing your maintenance by adding your first asset. Track equipment, schedule maintenance, and monitor performance all in one place.
-        </p>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <AddAssetDialog
-          onAddAsset={onAddAsset}
-          currentAssetCount={currentAssetCount}
-          triggerButton={
-            <Button size="lg" className="px-8">
-              <Plus className="w-5 h-5 mr-2" />
-              Add Your First Asset
-            </Button>
-          }
-        />
-        <Button
-          variant="outline"
-          size="lg"
-          className="px-8"
-          onClick={handleViewDemo}
-          disabled={isAddingDemo}
-        >
-          <FileText className="w-5 h-5 mr-2" />
-          {isAddingDemo ? 'Creating Demo...' : 'View Demo'}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8 max-w-4xl">
-        <div className="text-center p-4">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Wrench className="w-6 h-6 text-green-600" />
-          </div>
-          <h4 className="font-medium mb-1">Track Equipment</h4>
-          <p className="text-sm text-muted-foreground">Monitor all your assets in one centralized location</p>
-        </div>
-
-        <div className="text-center p-4">
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <FileText className="w-6 h-6 text-orange-600" />
-          </div>
-          <h4 className="font-medium mb-1">Schedule Maintenance</h4>
-          <p className="text-sm text-muted-foreground">Create and manage maintenance tasks automatically</p>
-        </div>
-
-        <div className="text-center p-4">
-          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <BarChart3 className="w-6 h-6 text-purple-600" />
-          </div>
-          <h4 className="font-medium mb-1">Monitor Performance</h4>
-          <p className="text-sm text-muted-foreground">Get insights into asset health and efficiency</p>
-        </div>
-
-        <div className="text-center p-4">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Brain className="w-6 h-6 text-blue-600" />
-          </div>
-          <h4 className="font-medium mb-1">AI Insights</h4>
-          <p className="text-sm text-muted-foreground">Get intelligent recommendations and predictive analytics</p>
-        </div>
-
-        <div className="text-center p-4">
-          <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <AlertTriangle className="w-6 h-6 text-red-600" />
-          </div>
-          <h4 className="font-medium mb-1">Failure Mode Effects Analysis</h4>
-          <p className="text-sm text-muted-foreground">Identify potential failure modes and assess risks</p>
-        </div>
-
-        <div className="text-center p-4">
-          <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Search className="w-6 h-6 text-indigo-600" />
-          </div>
-          <h4 className="font-medium mb-1">Root Cause Analysis</h4>
-          <p className="text-sm text-muted-foreground">Investigate failures and prevent future occurrences</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AssetsView({
   assets,
   onAddAsset,
@@ -146,7 +38,27 @@ function AssetsView({
   onEditAsset,
   onCreateDemoData
 }: AssetsViewProps) {
+  // State management
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<number>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+
+  // Filter and Sort State
+  const [filters, setFilters] = useState<FilterState>({
+    search: '',
+    condition: 'all',
+    type: 'all',
+    location: 'all',
+    manufacturer: 'all',
+    operatingHoursMin: '',
+    operatingHoursMax: ''
+  });
+
+  const [sort, setSort] = useState<SortState>({
+    field: 'name',
+    direction: 'asc'
+  });
 
   useEffect(() => {
     console.log('AssetsView props:', {
@@ -155,6 +67,173 @@ function AssetsView({
       assets: assets?.map(a => ({ id: a?.id, name: a?.name })) || []
     });
   }, [assets]);
+
+  // Get selected assets for bulk operations
+  const selectedAssets = useMemo(() => {
+    const safeAssets = Array.isArray(assets) ? assets.filter(asset => asset && asset.id != null) : [];
+    return safeAssets.filter(asset => selectedAssetIds.has(asset.id));
+  }, [assets, selectedAssetIds]);
+
+  // Bulk operations handlers
+  const handleSelectAsset = (assetId: number, checked: boolean) => {
+    setSelectedAssetIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(assetId);
+      } else {
+        newSet.delete(assetId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    const safeAssets = Array.isArray(assets) ? assets.filter(asset => asset && asset.id != null) : [];
+    if (checked) {
+      const allIds = new Set(safeAssets.map(asset => asset.id));
+      setSelectedAssetIds(allIds);
+    } else {
+      setSelectedAssetIds(new Set());
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedAssetIds(new Set());
+    setBulkMode(false);
+  };
+
+  const handleCreateBulkTask = async (taskType: string, description: string, dueDate: string) => {
+    if (!onAddSingleMaintenanceTask || selectedAssets.length === 0) return;
+
+    try {
+      // Create maintenance tasks for each selected asset
+      const tasks = selectedAssets.map(asset => ({
+        assetId: asset.id,
+        taskType: 'preventive' as const,
+        description: `${description} - ${asset.name}`,
+        frequency: 'As needed',
+        hoursInterval: 0,
+        lastCompleted: new Date().toISOString().split('T')[0],
+        nextDue: dueDate,
+        estimatedDuration: taskType === 'grease-inspection' ? '30 minutes' : '1 hour',
+        responsible: 'Maintenance Team',
+        responsibleEmail: 'maintenance@company.com',
+        priority: 'medium' as const,
+        status: 'scheduled' as const
+      }));
+
+      // Add each task
+      for (const task of tasks) {
+        await onAddSingleMaintenanceTask(task);
+      }
+
+      // Clear selection and exit bulk mode
+      handleClearSelection();
+
+      // Show success message (you might want to add a toast notification here)
+      console.log(`Created ${tasks.length} maintenance tasks successfully`);
+
+    } catch (error) {
+      console.error('Error creating bulk maintenance tasks:', error);
+    }
+  };
+
+  // Get unique values for filter dropdowns
+  const filterOptions = useMemo(() => {
+    const safeAssets = Array.isArray(assets) ? assets.filter(asset => asset && asset.id != null) : [];
+
+    return {
+      conditions: [...new Set(safeAssets.map(a => a.condition).filter(Boolean))],
+      types: [...new Set(safeAssets.map(a => a.type).filter(Boolean))],
+      locations: [...new Set(safeAssets.map(a => a.location).filter(Boolean))],
+      manufacturers: [...new Set(safeAssets.map(a => a.manufacturer).filter(Boolean))]
+    };
+  }, [assets]);
+
+  // Filter and sort assets
+  const filteredAndSortedAssets = useMemo(() => {
+    const safeAssets = Array.isArray(assets) ? assets.filter(asset => asset && asset.id != null) : [];
+
+    // Apply filters
+    let filtered = safeAssets.filter(asset => {
+      // Search filter
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        const searchableText = [
+          asset.name,
+          asset.type,
+          asset.manufacturer,
+          asset.modelNumber,
+          asset.serialNumber,
+          asset.location
+        ].join(' ').toLowerCase();
+
+        if (!searchableText.includes(searchTerm)) return false;
+      }
+
+      // Condition filter
+      if (filters.condition !== 'all' && asset.condition !== filters.condition) return false;
+
+      // Type filter
+      if (filters.type !== 'all' && asset.type !== filters.type) return false;
+
+      // Location filter
+      if (filters.location !== 'all' && asset.location !== filters.location) return false;
+
+      // Manufacturer filter
+      if (filters.manufacturer !== 'all' && asset.manufacturer !== filters.manufacturer) return false;
+
+      // Operating hours filter
+      if (filters.operatingHoursMin && asset.operatingHours < parseInt(filters.operatingHoursMin)) return false;
+      if (filters.operatingHoursMax && asset.operatingHours > parseInt(filters.operatingHoursMax)) return false;
+
+      return true;
+    });
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sort.field) {
+        case 'name':
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+          break;
+        case 'type':
+          aValue = a.type?.toLowerCase() || '';
+          bValue = b.type?.toLowerCase() || '';
+          break;
+        case 'condition':
+          aValue = a.condition || '';
+          bValue = b.condition || '';
+          break;
+        case 'location':
+          aValue = a.location?.toLowerCase() || '';
+          bValue = b.location?.toLowerCase() || '';
+          break;
+        case 'operatingHours':
+          aValue = a.operatingHours || 0;
+          bValue = b.operatingHours || 0;
+          break;
+        case 'lastMaintenance':
+          aValue = new Date(a.lastMaintenance || 0);
+          bValue = new Date(b.lastMaintenance || 0);
+          break;
+        default:
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+      }
+
+      if (sort.direction === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return filtered;
+  }, [assets, filters, sort]);
 
   const handleEditClick = (event: React.MouseEvent, asset: Asset) => {
     console.log('Gear clicked for asset:', asset?.name, 'ID:', asset?.id);
@@ -186,7 +265,7 @@ function AssetsView({
   // Function to clear demo data and return to empty state
   const handleBackToFeatures = () => {
     // Remove all demo assets
-    const realAssets = safeAssets.filter(asset => !asset.isDemo);
+    const realAssets = filteredAndSortedAssets.filter(asset => !asset.isDemo);
     // If there are no real assets, this will trigger the empty state
     if (realAssets.length === 0) {
       localStorage.removeItem('demoMode');
@@ -194,6 +273,28 @@ function AssetsView({
       window.location.reload();
     }
   };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      condition: 'all',
+      type: 'all',
+      location: 'all',
+      manufacturer: 'all',
+      operatingHoursMin: '',
+      operatingHoursMax: ''
+    });
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = filters.search ||
+    filters.condition !== 'all' ||
+    filters.type !== 'all' ||
+    filters.location !== 'all' ||
+    filters.manufacturer !== 'all' ||
+    filters.operatingHoursMin ||
+    filters.operatingHoursMax;
 
   // Safety check for assets
   const safeAssets = Array.isArray(assets) ? assets.filter(asset => asset && asset.id != null) : [];
@@ -242,6 +343,30 @@ function AssetsView({
             )}
           </div>
           <div className="flex gap-2">
+            {/* Bulk Selection Toggle */}
+            <Button
+              variant={bulkMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setBulkMode(!bulkMode);
+                if (!bulkMode) setSelectedAssetIds(new Set());
+              }}
+            >
+              <CheckSquare className="w-4 h-4 mr-2" />
+              {bulkMode ? 'Exit Selection' : 'Bulk Select'}
+            </Button>
+
+            {/* Select All/None when in bulk mode */}
+            {bulkMode && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSelectAll(selectedAssetIds.size === 0)}
+              >
+                {selectedAssetIds.size === filteredAndSortedAssets.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            )}
+
             <AddAssetDialog
               onAddAsset={handleAddAssetWithDemoExit}
               currentAssetCount={safeAssets.length}
@@ -255,8 +380,34 @@ function AssetsView({
             )}
           </div>
         </div>
+
+        {/* Asset Filters Panel */}
+        <AssetFiltersPanel
+          filters={filters}
+          sort={sort}
+          filterOptions={filterOptions}
+          onFiltersChange={setFilters}
+          onSortChange={setSort}
+          onClearFilters={clearFilters}
+          isVisible={showFilters}
+          onToggleVisibility={() => setShowFilters(!showFilters)}
+          hasActiveFilters={hasActiveFilters}
+          resultCount={filteredAndSortedAssets.length}
+          totalCount={safeAssets.length}
+        />
+
+        {/* Bulk Operations Panel */}
+        {bulkMode && selectedAssets.length > 0 && (
+          <BulkOperationsPanel
+            selectedAssets={selectedAssets}
+            onClearSelection={handleClearSelection}
+            onCreateBulkTask={handleCreateBulkTask}
+          />
+        )}
+
+        {/* Assets Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {safeAssets.map((asset) => {
+          {filteredAndSortedAssets.map((asset) => {
             // Extra safety check for each asset
             if (!asset || asset.id == null) {
               console.warn('Invalid asset found:', asset);
@@ -264,135 +415,50 @@ function AssetsView({
             }
 
             return (
-              <Card
+              <AssetCard
                 key={asset.id}
-                className="hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => onSelectAsset(asset.id)}
-              >
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start gap-2 mb-1">
-                        {/* Fixed: Better layout for title and badge */}
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-lg leading-tight break-words">
-                            {asset.name || 'Unnamed Asset'}
-                          </CardTitle>
-                        </div>
-                        {asset.isDemo && (
-                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
-                            Demo
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {asset.type || 'Unknown Type'} • {asset.manufacturer || 'Unknown Manufacturer'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Badge variant="secondary" className={getConditionColor(asset.condition || 'Unknown')}>
-                        {asset.condition || 'Unknown'}
-                      </Badge>
-                      {/* Only show edit button for non-demo assets */}
-                      {onEditAsset && !asset.isDemo && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleEditClick(e, asset)}
-                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {/* Show read-only indicator for demo assets */}
-                      {asset.isDemo && (
-                        <div className="h-8 w-8 flex items-center justify-center opacity-0 group-hover:opacity-60 transition-opacity">
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-1">
-                      <span className="text-muted-foreground">Model:</span>
-                      <p className="break-words">{asset.modelNumber || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-muted-foreground">Serial:</span>
-                      <p className="break-words">{asset.serialNumber || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-muted-foreground">Location:</span>
-                      <p className="break-words">{asset.location || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-muted-foreground">Hours:</span>
-                      <p>{asset.operatingHours ? asset.operatingHours.toLocaleString() : 'N/A'}</p>
-                    </div>
-                  </div>
-                  {asset.specifications?.power && (
-                    <div className="pt-3 border-t">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">Power:</span>
-                        <span className="font-medium">{asset.specifications.power}</span>
-                      </div>
-                    </div>
-                  )}
-                  <div className="pt-3 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      Last Maintenance: <span className="font-medium">{asset.lastMaintenance || 'N/A'}</span>
-                    </p>
-                    {asset.isDemo && (
-                      <p className="text-xs text-blue-600 mt-1 italic">
-                        View-only demo asset • Click to explore details
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                asset={asset}
+                isSelected={selectedAssetIds.has(asset.id)}
+                bulkMode={bulkMode}
+                onSelect={handleSelectAsset}
+                onAssetClick={onSelectAsset}
+                onEditClick={handleEditClick}
+                showEdit={!!onEditAsset}
+              />
             );
           })}
         </div>
+
+        {/* No Results Message */}
+        {filteredAndSortedAssets.length === 0 && safeAssets.length > 0 && (
+          <Card className="p-8 text-center">
+            <div className="space-y-4">
+              <div className="h-12 w-12 text-muted-foreground mx-auto" />
+              <div>
+                <h3 className="text-lg font-medium">No assets found</h3>
+                <p className="text-muted-foreground">Try adjusting your filters to see more results</p>
+              </div>
+              <Button variant="outline" onClick={clearFilters}>
+                Clear all filters
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
+
+      {/* Sidebar with Stats Panel */}
       <div className="w-80 flex-shrink-0">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center">
-                <div className="text-3xl font-medium">{safeAssets.length}</div>
-                <p className="text-sm text-muted-foreground mt-1">Total Assets</p>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-medium text-green-600">
-                  {safeAssets.filter(a => a?.condition === 'Good').length}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Good Condition</p>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-3">
-              <h4>Asset Types</h4>
-              {Object.entries(
-                safeAssets.reduce((acc, asset) => {
-                  const type = asset?.type || 'Unknown';
-                  acc[type] = (acc[type] || 0) + 1;
-                  return acc;
-                }, {} as Record<string, number>)
-              ).map(([type, count]) => (
-                <div key={type} className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">{type}</span>
-                  <span className="font-medium">{count}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <AssetStatsPanel
+          assets={filteredAndSortedAssets}
+          hasActiveFilters={hasActiveFilters}
+          onFilterChange={(partialFilters) => setFilters(prev => ({ ...prev, ...partialFilters }))}
+          onBulkModeActivate={() => {
+            setBulkMode(true);
+            // Select all assets for quick bulk grease inspection
+            const allIds = new Set(filteredAndSortedAssets.map(asset => asset.id));
+            setSelectedAssetIds(allIds);
+          }}
+        />
       </div>
 
       {/* Edit Asset Dialog */}

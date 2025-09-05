@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const User = require('../models/user');
+const User = require('../models/user.js');
 require('dotenv').config();
 
 async function fixAdmin() {
@@ -17,19 +17,20 @@ async function fixAdmin() {
     });
     console.log('Deleted existing admin user');
 
-    // Create new admin user (password will be hashed by pre-save middleware)
+    // Create new admin user - let the pre-save hook handle hashing
     const admin = new User({
-      username: 'admin',
-      email: 'admin@caseyuptime.com',
-      firstName: 'Admin',
-      lastName: 'User',
-      company: 'Casey Platform',
-      role: 'admin',
-      userType: 'admin',
-      password: 'admin123', // Raw password - let the model hash it
-      consent: true,
-      isActive: true
+        username: 'admin',
+        email: 'admin@caseyuptime.com',
+        firstName: 'Admin',
+        lastName: 'User',
+        company: 'Casey Platform',
+        role: 'admin',
+        userType: 'admin',
+        password: 'admin123',  // Plain password - pre-save hook will hash it
+        consent: true,
+        isActive: true
     });
+
 
     await admin.save();
     console.log('Admin user recreated successfully!');

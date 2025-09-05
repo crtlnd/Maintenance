@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Alert, AlertDescription } from '../ui/alert';
 import { CustomerPricingSection } from './CustomerPricingSection';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function ProfileSettings() {
   const { user, updateProfile } = useAuth();

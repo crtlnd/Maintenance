@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import aiService from '../../../services/aiService';
+import aiService from '../../../Services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
 
 function AIPredictiveView({ assets = [] }) {

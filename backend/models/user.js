@@ -14,10 +14,25 @@ const userSchema = new mongoose.Schema({
     // Removed enum restriction to allow free-form job titles like "Maintenance Manager"
   },
   consent: { type: Boolean, default: false },
-  // Updated subscription fields to match frontend expectations
+
+  // Organization relationship (NEW)
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    default: null
+  },
+
+  // Organization role (NEW) - separate from job title role
+  organizationRole: {
+    type: String,
+    enum: ['owner', 'technician'],
+    default: 'technician'
+  },
+
+  // Updated subscription fields to match your actual subscription structure
   subscriptionTier: {
     type: String,
-    enum: ['Basic', 'Professional', 'Enterprise'], // Changed 'Annual' to 'Enterprise'
+    enum: ['Basic', 'Professional', 'Annual'], // Fixed: Changed 'Enterprise' back to 'Annual'
     default: 'Basic'
   },
   userType: {
@@ -25,11 +40,26 @@ const userSchema = new mongoose.Schema({
     enum: ['customer', 'service_provider', 'admin'],
     default: 'customer'
   },
+
+  // Future: service provider scaffolding (NEW)
+  accessType: {
+    type: String,
+    enum: ['member', 'external_provider'],
+    default: 'member'
+  },
+
+  // Future: granular permissions placeholder (NEW)
+  permissions: {
+    type: Map,
+    of: Boolean,
+    default: new Map()
+  },
+
   // Add subscription object that frontend expects
   subscription: {
     plan: {
       type: String,
-      enum: ['Basic', 'Professional', 'Enterprise'],
+      enum: ['Basic', 'Professional', 'Annual'], // Fixed: Changed 'Enterprise' back to 'Annual'
       default: 'Basic'
     },
     status: {
@@ -42,6 +72,7 @@ const userSchema = new mongoose.Schema({
       default: Date.now
     }
   },
+
   // Admin-specific fields
   isActive: {
     type: Boolean,
@@ -60,6 +91,7 @@ const userSchema = new mongoose.Schema({
   assets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Asset' }],
   lastLogin: { type: Date },
   createdAt: { type: Date, default: Date.now },
+
   // Enhanced notification preferences to match frontend
   notificationPreferences: {
     maintenanceDue: { type: Boolean, default: true },
@@ -82,9 +114,51 @@ const userSchema = new mongoose.Schema({
   },
 });
 
+// Indexes (NEW)
+userSchema.index({ organizationId: 1 });
+userSchema.index({ organizationRole: 1 });
+
 // Add method to check if user is admin
 userSchema.methods.isAdmin = function() {
   return this.userType === 'admin' || this.role === 'admin';
+};
+
+// NEW: Organization-related methods
+userSchema.methods.isOrganizationOwner = function() {
+  return this.organizationRole === 'owner';
+};
+
+userSchema.methods.canInviteMembers = function() {
+  return this.organizationRole === 'owner';
+};
+
+userSchema.methods.hasOrganization = function() {
+  return this.organizationId !== null;
+};
+
+userSchema.methods.updateLastLogin = function() {
+  this.lastLogin = new Date();
+  return this.save();
+};
+
+// Future: permission checking methods
+userSchema.methods.hasPermission = function(permission) {
+  // Simple implementation for now
+  if (this.organizationRole === 'owner') return true;
+  return this.permissions.get(permission) || false;
+};
+
+userSchema.methods.canAccessAssets = function() {
+  return this.isActive && this.hasOrganization();
+};
+
+// NEW: Static methods
+userSchema.statics.findByOrganization = function(organizationId) {
+  return this.find({ organizationId, isActive: true });
+};
+
+userSchema.statics.findOwners = function() {
+  return this.find({ organizationRole: 'owner', isActive: true });
 };
 
 // Pre-save middleware to sync subscriptionTier with subscription.plan

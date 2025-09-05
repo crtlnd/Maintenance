@@ -8,21 +8,33 @@ const caseyUptimeLogo = null; // Temporarily remove logo
 export default function AuthPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get('mode') || 'login';
+  const inviteToken = searchParams.get('inviteToken'); // NEW: Get invite token
   const [isLogin, setIsLogin] = useState(mode === 'login');
 
   useEffect(() => {
     console.log('Query param mode:', mode);
+    console.log('Query param inviteToken:', inviteToken); // NEW: Log invite token
     setIsLogin(mode === 'login');
-  }, [mode]);
+  }, [mode, inviteToken]);
 
   const handleSwitchToSignup = () => {
     console.log('Switching to signup');
-    setSearchParams({ mode: 'signup' });
+    // NEW: Preserve inviteToken when switching modes
+    const params = { mode: 'signup' };
+    if (inviteToken) {
+      params.inviteToken = inviteToken;
+    }
+    setSearchParams(params);
   };
 
   const handleSwitchToLogin = () => {
     console.log('Switching to login');
-    setSearchParams({ mode: 'login' });
+    // NEW: Preserve inviteToken when switching modes
+    const params = { mode: 'login' };
+    if (inviteToken) {
+      params.inviteToken = inviteToken;
+    }
+    setSearchParams(params);
   };
 
   console.log('Rendering AuthPage: isLogin=', isLogin);
@@ -62,12 +74,35 @@ export default function AuthPage() {
           </div>
         </div>
       </nav>
+
+      {/* NEW: Show invitation context if inviteToken exists */}
+      {inviteToken && (
+        <div className="w-full max-w-md mb-4">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-blue-600">🎉</span>
+              <h3 className="font-semibold text-blue-900">Organization Invitation</h3>
+            </div>
+            <p className="text-blue-800 text-sm">
+              You're {isLogin ? 'signing in' : 'signing up'} to join an organization!
+              {!isLogin && ' Complete your registration below.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-md">
         {console.log('Rendering component:', isLogin ? 'LoginForm' : 'SignupForm')}
         {isLogin ? (
-          <LoginForm onSwitchToSignup={handleSwitchToSignup} />
+          <LoginForm
+            onSwitchToSignup={handleSwitchToSignup}
+            inviteToken={inviteToken} // NEW: Pass invite token to LoginForm
+          />
         ) : (
-          <SignupForm onSwitchToLogin={handleSwitchToLogin} />
+          <SignupForm
+            onSwitchToLogin={handleSwitchToLogin}
+            inviteToken={inviteToken} // NEW: Pass invite token to SignupForm
+          />
         )}
       </div>
     </div>
@@ -75,7 +110,6 @@ export default function AuthPage() {
 }
 
 // Add this component to your AuthPage.tsx temporarily for debugging
-
 const DebugStorageClear = () => {
   const clearStorage = () => {
     localStorage.removeItem('maintenanceManager_user');

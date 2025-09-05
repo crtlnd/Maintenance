@@ -8,13 +8,13 @@ import { ProfileSettings } from '../account/ProfileSettings';
 import { NotificationSettings } from '../account/NotificationSettings';
 import { CustomerPricingSection } from '../account/CustomerPricingSection'; // FIXED: Changed from PricingSection
 import { TeamSettings } from '../account/TeamSettings';
-import { useAuth } from '../../contexts/AuthContext'; // FIXED: Changed from '../../utils/auth'
+import { useAuth } from '../../contexts/AuthContext'; // FIXED: Changed from '../../contexts/AuthContext'
 
 type AccountViewType = 'profile' | 'team' | 'notifications' | 'billing' | 'security';
 
 export function AccountView() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<AccountViewType>('billing'); // FIXED: Default to billing tab for upgrade flow
+  const [activeTab, setActiveTab] = useState<AccountViewType>('profile'); // FIXED: Default to billing tab for upgrade flow
 
   if (!user) {
     return (

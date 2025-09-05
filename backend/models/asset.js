@@ -1,4 +1,4 @@
-// backend/models/asset.js - Enhanced version with comprehensive RCA schema
+// backend/models/asset.js - Enhanced version with comprehensive RCA schema and organization support
 const mongoose = require('mongoose');
 
 const fmeaSchema = new mongoose.Schema({
@@ -107,11 +107,35 @@ const assetSchema = new mongoose.Schema({
   condition: { type: String, enum: ['excellent', 'good', 'fair', 'poor'], default: 'good' },
   userId: { type: String, required: true },
 
+  // Organization association (NEW)
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
+
+  // Track who created and modified the asset (NEW)
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
+  lastModifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
   // Enhanced fields for rich asset data
   type: { type: String, required: true }, // excavator, truck, generator, etc.
   manufacturer: { type: String, required: true },
   model: { type: String, required: true },
-  serialNumber: { type: String, required: true, unique: true },
+  serialNumber: {
+    type: String,
+    unique: true,
+    sparse: true  // Allows multiple null values
+  },
   yearManufactured: { type: Number },
 
   // Operating information
@@ -180,14 +204,42 @@ const assetSchema = new mongoose.Schema({
   rca: [rcaSchema],
   rcm: [rcmSchema],
 
+  // Activity tracking (NEW)
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+
   // Timestamps
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
+// Indexes for efficient queries
+assetSchema.index({ userId: 1 });
+assetSchema.index({ organizationId: 1 }); // NEW
+assetSchema.index({ status: 1 });
+assetSchema.index({ condition: 1 });
+assetSchema.index({ type: 1 });
+assetSchema.index({ location: 1 });
+assetSchema.index({ nextServiceDate: 1 });
+assetSchema.index({ serialNumber: 1 }, { sparse: true, unique: true });
+
+// Compound indexes for common queries (NEW)
+assetSchema.index({ organizationId: 1, status: 1 });
+assetSchema.index({ organizationId: 1, type: 1 });
+assetSchema.index({ organizationId: 1, location: 1 });
+assetSchema.index({ userId: 1, status: 1 });
+
 // Pre-save middleware to update timestamps
 assetSchema.pre('save', function(next) {
   this.updatedAt = new Date();
+
+  // Set lastModifiedBy if not already set (NEW)
+  if (this.isModified() && !this.lastModifiedBy) {
+    this.lastModifiedBy = this.userId;
+  }
+
   next();
 });
 
@@ -196,6 +248,87 @@ assetSchema.pre('findOneAndUpdate', function(next) {
   this.set({ updatedAt: new Date() });
   next();
 });
+
+// Instance methods (NEW)
+assetSchema.methods.isMaintenanceDue = function() {
+  if (!this.nextServiceDate) return false;
+  return new Date() >= this.nextServiceDate;
+};
+
+assetSchema.methods.isMaintenanceOverdue = function() {
+  if (!this.nextServiceDate) return false;
+  const overdueDays = 7; // 7 days past due
+  const overdueDate = new Date(this.nextServiceDate.getTime() + (overdueDays * 24 * 60 * 60 * 1000));
+  return new Date() > overdueDate;
+};
+
+assetSchema.methods.getDaysUntilMaintenance = function() {
+  if (!this.nextServiceDate) return null;
+  const diffTime = this.nextServiceDate.getTime() - new Date().getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// Static methods for organization queries (NEW)
+assetSchema.statics.findByOrganization = function(organizationId, filter = {}) {
+  return this.find({
+    organizationId,
+    isActive: true,
+    ...filter
+  });
+};
+
+assetSchema.statics.findMaintenanceDue = function(organizationId, days = 30) {
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + days);
+
+  return this.find({
+    organizationId,
+    isActive: true,
+    nextServiceDate: { $lte: dueDate }
+  });
+};
+
+assetSchema.statics.findByLocation = function(organizationId, location) {
+  return this.find({
+    organizationId,
+    location,
+    isActive: true
+  });
+};
+
+assetSchema.statics.findByType = function(organizationId, type) {
+  return this.find({
+    organizationId,
+    type,
+    isActive: true
+  });
+};
+
+assetSchema.statics.getMaintenanceStats = function(organizationId) {
+  return this.aggregate([
+    { $match: { organizationId: new mongoose.Types.ObjectId(organizationId), isActive: true } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        operational: { $sum: { $cond: [{ $eq: ['$status', 'operational'] }, 1, 0] } },
+        maintenance: { $sum: { $cond: [{ $eq: ['$status', 'maintenance'] }, 1, 0] } },
+        down: { $sum: { $cond: [{ $eq: ['$status', 'down'] }, 1, 0] } },
+        overdue: {
+          $sum: {
+            $cond: [
+              { $and: [
+                { $ne: ['$nextServiceDate', null] },
+                { $lt: ['$nextServiceDate', new Date()] }
+              ]},
+              1, 0
+            ]
+          }
+        }
+      }
+    }
+  ]);
+};
 
 // Virtual for asset age
 assetSchema.virtual('age').get(function() {

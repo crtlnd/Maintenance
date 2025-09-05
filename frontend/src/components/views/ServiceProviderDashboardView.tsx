@@ -17,7 +17,7 @@ import {
   AlertCircle,
   Calendar
 } from 'lucide-react';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function ServiceProviderDashboardView() {
   const { user } = useAuth();

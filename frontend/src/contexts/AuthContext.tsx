@@ -1,5 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthState, User, NotificationPreferences, SubscriptionPlan, ServiceProviderPlan, UserType } from '../types';
+import { teamApi, organizationApi } from '../../services/teamApi.js';
+
+interface OrganizationData {
+  id: string;
+  name: string;
+  type: string;
+  settings: {
+    allowExternalAccess: boolean;
+    dataSharing: {
+      assets: boolean;
+      maintenance: boolean;
+    };
+  };
+  memberCount?: number;
+  assetCount?: number;
+}
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, signal?: AbortSignal) => Promise<boolean>;
@@ -24,6 +40,19 @@ interface AuthContextType extends AuthState {
   getAssetLimit: () => number | 'unlimited';
   getSeatLimit: () => number | 'unlimited';
   upgradePlan: (plan: SubscriptionPlan | ServiceProviderPlan, signal?: AbortSignal) => Promise<boolean>;
+
+  // NEW: Organization functions
+  organization: OrganizationData | null;
+  loadOrganization: () => Promise<void>;
+  createOrganization: (name: string, type?: string) => Promise<boolean>;
+  updateOrganizationSettings: (name: string, settings: any) => Promise<boolean>;
+  leaveOrganization: () => Promise<boolean>;
+
+  // NEW: Team management functions
+  isOrganizationOwner: () => boolean;
+  canInviteMembers: () => boolean;
+  hasOrganization: () => boolean;
+  getOrganizationRole: () => string;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -48,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
 
+  const [organization, setOrganization] = useState<OrganizationData | null>(null);
+
   useEffect(() => {
     const savedUser = localStorage.getItem('maintenanceManager_user');
     if (savedUser) {
@@ -59,6 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             user,
             loading: false,
           });
+          // Load organization data if user has one
+          if (user.organizationId) {
+            loadOrganization();
+          }
         } else {
           throw new Error('Invalid user data');
         }
@@ -98,6 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading: false,
       });
+
+      // Load organization data if user has one
+      if (user.organizationId) {
+        await loadOrganization();
+      }
+
       return true;
     } catch (error: any) {
       if (error.name !== 'AbortError') {
@@ -162,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: null,
       loading: false,
     });
+    setOrganization(null);
     localStorage.removeItem('token');
     localStorage.removeItem('maintenanceManager_user');
   };
@@ -189,6 +231,131 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('maintenanceManager_user', JSON.stringify(updatedUser));
   };
 
+  // NEW: Organization functions
+  const loadOrganization = async (): Promise<void> => {
+    try {
+      const response = await organizationApi.getOrganizationInfo();
+      if (response.success) {
+        setOrganization({
+          id: response.data.organization.id,
+          name: response.data.organization.name,
+          type: response.data.organization.type,
+          settings: response.data.organization.settings,
+          memberCount: response.data.stats?.memberCount,
+          assetCount: response.data.stats?.assetCount,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading organization:', error);
+    }
+  };
+
+  const createOrganization = async (name: string, type: string = 'internal'): Promise<boolean> => {
+    try {
+      const response = await organizationApi.createOrganization(name, type);
+      if (response.success) {
+        // Update user data
+        const updatedUser = {
+          ...authState.user!,
+          organizationId: response.data.organization.id,
+          organizationRole: 'owner',
+          subscriptionTier: 'Professional' as SubscriptionPlan,
+        };
+
+        setAuthState(prev => ({
+          ...prev,
+          user: updatedUser,
+        }));
+        localStorage.setItem('maintenanceManager_user', JSON.stringify(updatedUser));
+
+        // Set organization data
+        setOrganization({
+          id: response.data.organization.id,
+          name: response.data.organization.name,
+          type: response.data.organization.type,
+          settings: response.data.organization.settings,
+        });
+
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      return false;
+    }
+  };
+
+  const updateOrganizationSettings = async (name: string, settings: any): Promise<boolean> => {
+    try {
+      const response = await organizationApi.updateSettings(name, settings);
+      if (response.success) {
+        setOrganization(prev => prev ? {
+          ...prev,
+          name: response.data.organization.name,
+          settings: response.data.organization.settings,
+        } : null);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error updating organization settings:', error);
+      return false;
+    }
+  };
+
+  const leaveOrganization = async (): Promise<boolean> => {
+    try {
+      const response = await organizationApi.leaveOrganization();
+      if (response.success) {
+        // Update user data
+        const updatedUser = {
+          ...authState.user!,
+          organizationId: null,
+          organizationRole: 'technician',
+          subscriptionTier: 'Basic' as SubscriptionPlan,
+        };
+
+        setAuthState(prev => ({
+          ...prev,
+          user: updatedUser,
+        }));
+        localStorage.setItem('maintenanceManager_user', JSON.stringify(updatedUser));
+
+        // Clear organization data
+        setOrganization(null);
+
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error leaving organization:', error);
+      return false;
+    }
+  };
+
+  // NEW: Team management helper functions
+  const isOrganizationOwner = (): boolean => {
+    return authState.user?.organizationRole === 'owner' || false;
+  };
+
+  const canInviteMembers = (): boolean => {
+    return isOrganizationOwner();
+  };
+
+  const hasOrganization = (): boolean => {
+    return !!authState.user?.organizationId;
+  };
+
+  const getOrganizationRole = (): string => {
+    return authState.user?.organizationRole || 'technician';
+  };
+
+  // Updated team member functions to use organization role
+  const canAddTeamMember = (): boolean => {
+    if (!authState.user || authState.user.userType === 'service_provider') return false;
+    return isOrganizationOwner();
+  };
+
   const canAddAsset = (currentAssetCount: number): boolean => {
     console.log('DEBUG canAddAsset:', {
       hasUser: !!authState.user,
@@ -200,11 +367,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!authState.user || authState.user.userType === 'service_provider') return false;
     return authState.user.subscriptionTier !== 'Basic' || currentAssetCount < 5;
-  };
-
-  const canAddTeamMember = (): boolean => {
-    if (!authState.user || authState.user.userType === 'service_provider') return false;
-    return authState.user.subscriptionTier !== 'Basic';
   };
 
   const getAssetLimit = (): number | 'unlimited' => {
@@ -270,6 +432,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         getAssetLimit,
         getSeatLimit,
         upgradePlan,
+
+        // NEW: Organization context
+        organization,
+        loadOrganization,
+        createOrganization,
+        updateOrganizationSettings,
+        leaveOrganization,
+
+        // NEW: Team management
+        isOrganizationOwner,
+        canInviteMembers,
+        hasOrganization,
+        getOrganizationRole,
       }}
     >
       {children}

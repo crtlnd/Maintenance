@@ -7,7 +7,7 @@ import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
 import { MaintenanceTask } from '../../types';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TaskCompletionDialogProps {
   task: MaintenanceTask;

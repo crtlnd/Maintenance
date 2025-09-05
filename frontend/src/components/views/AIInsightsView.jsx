@@ -4,7 +4,7 @@ import { Brain, TrendingUp, AlertTriangle, DollarSign, Loader2, RefreshCw, Light
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import aiService from '../../../services/aiService';
+import aiService from '../../../Services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
 
 function AIInsightsView({ assets = [] }) {

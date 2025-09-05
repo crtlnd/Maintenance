@@ -129,6 +129,11 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
     navigate('/settings');
   };
 
+  const handleImportClick = () => {
+    setOpen(false);
+    navigate('/assets/import');
+  };
+
   if (!canAdd) {
     return (
       <Button
@@ -312,13 +317,27 @@ export function AddAssetDialog({ onAddAsset, currentAssetCount, triggerButton }:
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
-              Cancel
+          <div className="flex justify-between items-center pt-4">
+            {/* Left side - Import button */}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleImportClick}
+              disabled={isLoading}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              Import Bulk Assets from CSV
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating Asset...' : 'Create Asset'}
-            </Button>
+
+            {/* Right side - Form buttons */}
+            <div className="flex space-x-2">
+              <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Creating Asset...' : 'Create Asset'}
+              </Button>
+            </div>
           </div>
         </form>
 

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import AssetsView from '../views/AssetsView';
+import BulkAssetImportView from '../views/BulkAssetImportView';
 import { TaskListView } from '../views/TaskListView';
 import AIAssistantView from '../views/AIAssistantView';
 import ProvidersView from '../views/ProvidersView';
@@ -179,6 +180,19 @@ function MainRoutes({
             setAssets={setAssets}
             setFmeaData={setFmeaData}
             setRcaData={setRcaData}
+          />
+        }
+      />
+
+      <Route
+        path="/assets/import"
+        element={
+          <BulkAssetImportView
+            user={user}
+            onImportComplete={(newAssets) => {
+              setAssets(prev => [...prev, ...newAssets]);
+              navigate('/');
+            }}
           />
         }
       />

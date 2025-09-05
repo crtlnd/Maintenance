@@ -4,7 +4,7 @@ import { AlertTriangle, Shield, TrendingDown, Clock, Loader2, RefreshCw, Target,
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import aiService from '../../../services/aiService';
+import aiService from '../../../Services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
 
 function AIRiskAnalysisView({ assets = [] }) {

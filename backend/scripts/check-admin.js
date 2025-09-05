@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const User = require('../models/user');
+const User = require('../models/user.js');
 require('dotenv').config();
 
 async function checkAdmin() {
@@ -40,4 +40,3 @@ async function checkAdmin() {
 }
 
 checkAdmin();
-

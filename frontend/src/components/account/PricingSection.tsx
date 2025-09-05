@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import { CustomerPricingSection } from './CustomerPricingSection';
 import { ServiceProviderPricingSection } from './ServiceProviderPricingSection';
 

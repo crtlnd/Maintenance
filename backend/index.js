@@ -54,6 +54,7 @@ const exemptRoutes = [
   { path: '/api/providers/claim', method: 'POST' },
   { path: '/api/webhooks', method: 'POST' },
   { path: '/api/subscriptions/create-checkout-session', method: 'POST' },
+  { path: '/api/team/join', method: 'POST' }, // NEW - Allow joining via invitation token
 ];
 
 function isExemptRoute(req) {
@@ -156,6 +157,13 @@ async function run() {
     console.log('Registered /api/subscriptions route');
     app.use('/api/webhooks', require('./routes/webhooks')());
     console.log('Registered /api/webhooks route');
+
+    // NEW ROUTES - Team and Organization Management
+    app.use('/api/team', require('./routes/team'));
+    console.log('Registered /api/team route');
+    app.use('/api/organization', require('./routes/organization'));
+    console.log('Registered /api/organization route');
+
     console.log('Routes registered successfully');
     return true;
   } catch (error) {

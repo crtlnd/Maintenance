@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut } from 'lucide-react';
-import { useAuth } from '../utils/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 interface User {
   firstName?: string;
