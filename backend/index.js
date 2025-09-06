@@ -100,6 +100,8 @@ app.use((err, req, res, next) => {
   }
 });
 
+app.use('/api/procedures', require('./routes/procedures'));
+
 app.post('/api/test-body', (req, res) => {
   console.log('Test body received:', req.body);
   res.status(200).send({ received: req.body });

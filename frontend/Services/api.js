@@ -181,6 +181,44 @@ export const maintenanceApi = {
   }
 };
 
+// Procedure API functions
+export const procedureApi = {
+  // Get all procedures for a specific asset
+  getProceduresForAsset: async (assetId) => {
+    return makeRequest(`/procedures/asset/${assetId}`);
+  },
+
+  // Create a new procedure
+  createProcedure: async (procedureData) => {
+    return makeRequest('/procedures', {
+      method: 'POST',
+      body: JSON.stringify(procedureData),
+    });
+  },
+
+  // Update an existing procedure
+  updateProcedure: async (procedureId, procedureData) => {
+    return makeRequest(`/procedures/${procedureId}`, {
+      method: 'PUT',
+      body: JSON.stringify(procedureData),
+    });
+  },
+
+  // Delete a procedure
+  deleteProcedure: async (procedureId) => {
+    return makeRequest(`/procedures/${procedureId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Generate AI procedures for an asset
+  generateAIProcedures: async (assetId) => {
+    return makeRequest(`/procedures/generate/${assetId}`, {
+      method: 'POST',
+    });
+  },
+};
+
 // Authentication API functions
 export const authApi = {
   login: async (email, password) => {
@@ -248,6 +286,7 @@ export const providersApi = {
 export default {
   assets: assetApi,
   maintenance: maintenanceApi,
+  procedures: procedureApi,
   auth: authApi,
   user: userApi,
   providers: providersApi,

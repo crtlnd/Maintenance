@@ -113,6 +113,8 @@ router.post(
       const assetData = {
         id: newId,
         userId: req.auth.userId,
+        createdBy: req.auth.userId,           // Fixed: Add required createdBy field
+        organizationId: user.organizationId,  // Fixed: Add required organizationId field
         ...req.body,
         // Set defaults for optional fields
         operatingHours: req.body.operatingHours || 0,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shapes, ClipboardList, Bot, Users, Brain, MessageSquare, AlertTriangle, TrendingUp, Settings } from 'lucide-react';
+import { Shapes, ClipboardList, Bot, Users, Brain, MessageSquare, AlertTriangle, TrendingUp, Settings, Bell } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Asset } from '../types';
@@ -29,6 +29,7 @@ const iconMap = {
   AlertTriangle,
   TrendingUp,
   Settings,
+  Bell,
 };
 
 function AppSidebar({ user, plan, assets, setAssets }: AppSidebarProps) {
@@ -36,8 +37,9 @@ function AppSidebar({ user, plan, assets, setAssets }: AppSidebarProps) {
 
   const mainMenuItems = [
     { title: 'Asset Dashboard', icon: 'Shapes', path: '/' },
-    { title: 'Task List', icon: 'ClipboardList', path: '/maintenance' },
+    { title: 'Task List', icon: 'ClipboardList', path: '/tasks' },
     { title: 'Service Providers', icon: 'Users', path: '/service-providers' },
+    { title: 'Notifications', icon: 'Bell', path: '/notifications' }, // NEW: Added notifications
   ];
 
   const aiMenuItems = [
@@ -115,28 +117,6 @@ function AppSidebar({ user, plan, assets, setAssets }: AppSidebarProps) {
               {aiMenuItems.map((item) => renderMenuItem(item))}
             </div>
           </div>
-
-          {/* Legacy AI Assistant (for backwards compatibility) */}
-          <div>
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Legacy
-            </div>
-            <div className="space-y-1">
-              <NavLink
-                to="/fmea"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`
-                }
-              >
-                <Bot className="h-5 w-5" />
-                <span>AI Assistant (Legacy)</span>
-              </NavLink>
-            </div>
-          </div>
         </nav>
       </div>
 
@@ -163,7 +143,7 @@ function AppSidebar({ user, plan, assets, setAssets }: AppSidebarProps) {
               {user?.firstName ?? 'User'} {user?.lastName ?? ''}
             </span>
             <span className="text-xs text-gray-500 truncate">
-              {isAIPowered ? 'AI-Powered Plan' : (user?.role ?? 'Basic Plan')}
+              {user?.subscription?.tier ? `${user.subscription.tier.charAt(0).toUpperCase() + user.subscription.tier.slice(1)} Plan` : 'Basic Plan'}
             </span>
           </div>
         </NavLink>

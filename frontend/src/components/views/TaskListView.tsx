@@ -191,32 +191,32 @@ export function TaskListView({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl text-red-600">{stats.overdue}</div>
-            <p className="text-sm text-muted-foreground">Overdue Tasks</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl text-orange-600">{stats.critical}</div>
-            <p className="text-sm text-muted-foreground">Critical Priority</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl text-yellow-600">{stats.dueThisWeek}</div>
-            <p className="text-sm text-muted-foreground">Due This Week</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl text-blue-600">{stats.scheduled}</div>
-            <p className="text-sm text-muted-foreground">Total Scheduled</p>
-          </CardContent>
-        </Card>
-      </div>
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <Card key="overdue">
+    <CardContent className="p-4">
+      <div className="text-2xl text-red-600">{stats.overdue}</div>
+      <p className="text-sm text-muted-foreground">Overdue Tasks</p>
+    </CardContent>
+  </Card>
+  <Card key="critical">
+    <CardContent className="p-4">
+      <div className="text-2xl text-orange-600">{stats.critical}</div>
+      <p className="text-sm text-muted-foreground">Critical Priority</p>
+    </CardContent>
+  </Card>
+  <Card key="due-this-week">
+    <CardContent className="p-4">
+      <div className="text-2xl text-yellow-600">{stats.dueThisWeek}</div>
+      <p className="text-sm text-muted-foreground">Due This Week</p>
+    </CardContent>
+  </Card>
+  <Card key="scheduled">
+    <CardContent className="p-4">
+      <div className="text-2xl text-blue-600">{stats.scheduled}</div>
+      <p className="text-sm text-muted-foreground">Total Scheduled</p>
+    </CardContent>
+  </Card>
+</div>
 
       {/* Filters and Sorting */}
       <Card>

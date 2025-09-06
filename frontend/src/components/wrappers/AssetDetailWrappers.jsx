@@ -17,15 +17,35 @@ export function AssetDetailWrapper({
   setFmeaData,
   setRcaData
 }) {
-  const { assetId } = useParams();
+  const { id, assetId } = useParams(); // Try both id and assetId
   const navigate = useNavigate();
 
-  const asset = assets.find(a => a.id === parseInt(assetId || '0'));
+  // Add debugging
+  console.log('AssetDetailWrapper Debug:', {
+    urlParams: { id, assetId },
+    finalId: id || assetId,
+    finalIdParsed: parseInt((id || assetId) || '0'),
+    assetsArray: assets,
+    assetsLength: assets?.length,
+    assetIds: assets?.map(a => ({ id: a.id, type: typeof a.id, name: a.name })),
+    assets: assets
+  });
+
+  const finalId = id || assetId;
+  const asset = assets?.find(a => a.id === parseInt(finalId || '0'));
+
+  console.log('Asset lookup result:', {
+    searchingForId: parseInt(finalId || '0'),
+    foundAsset: asset,
+    assetName: asset?.name
+  });
 
   if (!asset) {
     return (
       <div className="p-6">
         <h2>Asset not found</h2>
+        <p>Looking for asset ID: {finalId}</p>
+        <p>Available assets: {assets?.length || 0}</p>
         <Button onClick={() => navigate('/')}>Back to Assets</Button>
       </div>
     );
@@ -70,6 +90,10 @@ export function AssetDetailWrapper({
         }));
         setFmeaData((prev) => [...prev, ...newEntries]);
       }}
+      onAddProcedure={(procedure) => {
+        console.log('Procedure created:', procedure);
+        // TODO: Add procedure to state when we implement backend
+      }}
     />
   );
 }
@@ -85,15 +109,18 @@ export function AssetDetailMaintenanceWrapper({
   setFmeaData,
   setRcaData
 }) {
-  const { assetId } = useParams();
+  const { id, assetId } = useParams();
   const navigate = useNavigate();
 
-  const asset = assets.find(a => a.id === parseInt(assetId || '0'));
+  const finalId = id || assetId;
+  const asset = assets?.find(a => a.id === parseInt(finalId || '0'));
 
   if (!asset) {
     return (
       <div className="p-6">
         <h2>Asset not found</h2>
+        <p>Looking for asset ID: {finalId}</p>
+        <p>Available assets: {assets?.length || 0}</p>
         <Button onClick={() => navigate('/')}>Back to Assets</Button>
       </div>
     );
@@ -137,6 +164,10 @@ export function AssetDetailMaintenanceWrapper({
           id: Date.now() + Math.random(),
         }));
         setFmeaData((prev) => [...prev, ...newEntries]);
+      }}
+      onAddProcedure={(procedure) => {
+        console.log('Procedure created:', procedure);
+        // TODO: Add procedure to state when we implement backend
       }}
     />
   );

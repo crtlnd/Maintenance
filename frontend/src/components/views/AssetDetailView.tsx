@@ -11,6 +11,7 @@ import { AssetOverviewTab } from './asset-detail/AssetOverviewTab';
 import { AssetFMEATab } from './asset-detail/AssetFMEATab';
 import { AssetRCATab } from './asset-detail/AssetRCATab';
 import { AssetMaintenanceTab } from './asset-detail/AssetMaintenanceTab';
+import { AssetProceduresTab } from './asset-detail/AssetProceduresTab';
 
 interface AssetDetailViewProps {
   asset: Asset;
@@ -45,6 +46,11 @@ export function AssetDetailView({
   const assetRCA = rcaData.filter(r => r.assetId === asset.id);
   const assetMaintenance = maintenanceData.filter(m => m.assetId === asset.id);
 
+  // Calculate high RPN items for procedure suggestions
+  const highRPNItems = assetFMEA.filter(item =>
+    (item.severity >= 8) || (item.severity * item.occurrence * item.detection >= 125)
+  );
+
   const handleEditSave = (updatedAsset: Asset) => {
     if (onEditAsset) {
       onEditAsset(updatedAsset);
@@ -65,7 +71,7 @@ export function AssetDetailView({
             <div>
               <h2>{asset.name}</h2>
               <p className="text-muted-foreground">
-                {asset.type} • {asset.manufacturer} • {asset.modelNumber}
+                {asset.type} • {asset.manufacturer} • {asset.model}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -92,8 +98,9 @@ export function AssetDetailView({
 
       {/* Tabs for different sections */}
       <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="procedures">Procedures</TabsTrigger>
           <TabsTrigger value="fmea">FMEA ({assetFMEA.length})</TabsTrigger>
           <TabsTrigger value="rca">RCA ({assetRCA.length})</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance ({assetMaintenance.length})</TabsTrigger>
@@ -105,6 +112,14 @@ export function AssetDetailView({
             fmeaCount={assetFMEA.length}
             rcaData={assetRCA}
             maintenanceData={assetMaintenance}
+          />
+        </TabsContent>
+
+        <TabsContent value="procedures">
+          <AssetProceduresTab
+            asset={asset}
+            highRPNItems={highRPNItems}
+            onAddMaintenanceTask={onAddMaintenanceTask}
           />
         </TabsContent>
 

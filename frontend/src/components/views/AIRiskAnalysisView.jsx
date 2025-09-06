@@ -1,350 +1,301 @@
-// frontend/src/components/views/AIRiskAnalysisView.jsx
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Shield, TrendingDown, Clock, Loader2, RefreshCw, Target, DollarSign } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import aiService from '../../../Services/aiService';
-import { useAuth } from '../../contexts/AuthContext';
+import { AlertTriangle, Brain, Settings, Shield, TrendingDown, Clock, RefreshCw } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Progress } from '../ui/progress';
+import AIModelSelector from '../ui/AIModelSelector';
+import aiService from '../../../services/aiService';
 
-function AIRiskAnalysisView({ assets = [] }) {
-  const { user } = useAuth();
+const AIRiskAnalysisView = ({ assets = [] }) => {
   const [riskAnalysis, setRiskAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [autoRunComplete, setAutoRunComplete] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gpt-4-turbo'); // Default to premium for risk analysis
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  const [lastAnalysis, setLastAnalysis] = useState(null);
 
-  // Risk levels with colors
-  const riskLevels = {
-    high: { color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-50', label: 'High Risk' },
-    medium: { color: 'bg-yellow-500', textColor: 'text-yellow-700', bgColor: 'bg-yellow-50', label: 'Medium Risk' },
-    low: { color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-50', label: 'Low Risk' }
-  };
-
-  // Predefined risk analysis types
-  const riskAnalysisTypes = [
-    {
-      id: 'overall',
-      title: 'Overall Risk Assessment',
-      description: 'Comprehensive risk analysis of all assets',
-      icon: AlertTriangle,
-      query: 'Provide a comprehensive risk assessment of my maintenance portfolio. Identify high-priority assets that need immediate attention and rank them by risk level.'
-    },
-    {
-      id: 'financial',
-      title: 'Financial Risk Analysis',
-      description: 'Cost impact and financial risk assessment',
-      icon: DollarSign,
-      query: 'Analyze the financial risks in my maintenance portfolio. What are the potential costs of failures and which assets pose the highest financial risk?'
-    },
-    {
-      id: 'safety',
-      title: 'Safety Risk Assessment',
-      description: 'Safety-critical asset risk evaluation',
-      icon: Shield,
-      query: 'Identify safety-critical assets and assess safety risks. Which equipment poses the highest safety risk if it fails?'
-    },
-    {
-      id: 'operational',
-      title: 'Operational Risk Analysis',
-      description: 'Impact on operations and productivity',
-      icon: Target,
-      query: 'Analyze operational risks and the impact on productivity. Which asset failures would most disrupt operations?'
-    }
-  ];
-
-  // Auto-run overall risk analysis on component mount
-  useEffect(() => {
-    if (!autoRunComplete && assets.length > 0) {
-      runRiskAnalysis(riskAnalysisTypes[0].query, 'overall');
-      setAutoRunComplete(true);
-    }
-  }, [assets, autoRunComplete]);
-
-  // Run risk analysis
-  const runRiskAnalysis = async (query, analysisId) => {
+  const runRiskAnalysis = async () => {
     setLoading(true);
-    setError(null);
-
     try {
-      const response = await aiService.getRiskAnalysis(query);
-      setRiskAnalysis({
-        ...response,
-        analysisId,
-        timestamp: new Date()
+      const result = await aiService.analyzeRisk(assets, {
+        model: selectedModel,
+        includeDetailedBreakdown: true,
+        riskTimeframes: ['immediate', '30d', '90d', '1y']
       });
+
+      setRiskAnalysis(result);
+      setLastAnalysis(new Date());
     } catch (error) {
-      console.error('Error getting risk analysis:', error);
-      setError(error.message || 'Failed to get risk analysis');
+      console.error('Risk analysis error:', error);
+      setRiskAnalysis({
+        error: 'Failed to perform risk analysis. Please try again.'
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle analysis type selection
-  const handleAnalysisType = (analysisType) => {
-    runRiskAnalysis(analysisType.query, analysisType.id);
+  useEffect(() => {
+    if (assets.length > 0) {
+      runRiskAnalysis();
+    }
+  }, [assets.length]);
+
+  const getRiskColor = (level) => {
+    switch (level?.toLowerCase()) {
+      case 'critical': return 'text-red-600 bg-red-50 border-red-200';
+      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'low': return 'text-green-600 bg-green-50 border-green-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
   };
 
-  // Mock risk metrics for display (in real app, this would come from AI analysis)
-  const mockRiskMetrics = {
-    highRisk: assets.filter(a => a.status === 'needs_attention' || a.status === 'critical').length,
-    mediumRisk: assets.filter(a => a.status === 'maintenance').length,
-    lowRisk: assets.filter(a => a.status === 'operational').length,
-    totalAssets: assets.length
-  };
-
-  const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleString();
+  const getRiskScore = (level) => {
+    switch (level?.toLowerCase()) {
+      case 'critical': return 90;
+      case 'high': return 70;
+      case 'medium': return 50;
+      case 'low': return 25;
+      default: return 0;
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="h-6 w-6 text-red-600" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <AlertTriangle className="h-8 w-8 text-red-600" />
           <div>
             <h1 className="text-2xl font-bold">AI Risk Analysis</h1>
-            <p className="text-gray-600">Intelligent risk assessment for your maintenance portfolio</p>
+            <p className="text-gray-600">
+              Intelligent assessment of maintenance risks across your assets
+            </p>
           </div>
         </div>
-        <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-          Credits: {user?.aiCredits || user?.credits || 100}
+
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowModelSelector(!showModelSelector)}
+          >
+            <Settings className="h-4 w-4 mr-1" />
+            Model Settings
+          </Button>
+
+          <Button
+            onClick={runRiskAnalysis}
+            disabled={loading}
+          >
+            {loading ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Brain className="h-4 w-4 mr-2" />
+            )}
+            Analyze Risks
+          </Button>
         </div>
       </div>
 
-      {/* Risk Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">High Risk</p>
-                <p className="text-2xl font-bold text-red-600">{mockRiskMetrics.highRisk}</p>
-              </div>
-              <div className="w-3 h-8 bg-red-500 rounded"></div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Medium Risk</p>
-                <p className="text-2xl font-bold text-yellow-600">{mockRiskMetrics.mediumRisk}</p>
-              </div>
-              <div className="w-3 h-8 bg-yellow-500 rounded"></div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Low Risk</p>
-                <p className="text-2xl font-bold text-green-600">{mockRiskMetrics.lowRisk}</p>
-              </div>
-              <div className="w-3 h-8 bg-green-500 rounded"></div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Assets</p>
-                <p className="text-2xl font-bold text-blue-600">{mockRiskMetrics.totalAssets}</p>
-              </div>
-              <div className="w-3 h-8 bg-blue-500 rounded"></div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Analysis Type Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Risk Analysis Types</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {riskAnalysisTypes.map((analysisType) => {
-              const IconComponent = analysisType.icon;
-              const isActive = riskAnalysis?.analysisId === analysisType.id;
-
-              return (
-                <Button
-                  key={analysisType.id}
-                  variant={isActive ? "default" : "outline"}
-                  className="h-auto p-4 text-left justify-start"
-                  onClick={() => handleAnalysisType(analysisType)}
-                  disabled={loading}
-                >
-                  <div className="flex flex-col items-start gap-2 w-full">
-                    <div className="flex items-center gap-2">
-                      <IconComponent className="h-5 w-5" />
-                      <span className="font-semibold text-sm">{analysisType.title}</span>
-                    </div>
-                    <p className="text-xs opacity-80 text-left">
-                      {analysisType.description}
-                    </p>
-                  </div>
-                </Button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Error Display */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-800">
-              <AlertTriangle className="h-4 w-4" />
-              <span>{error}</span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Model Selector */}
+      {showModelSelector && (
+        <AIModelSelector
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          showDetails={true}
+        />
       )}
 
-      {/* Loading State */}
       {loading && (
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-red-600" />
-                <p className="text-gray-600">Analyzing risk factors...</p>
-              </div>
-            </div>
+          <CardContent className="p-8 text-center">
+            <Brain className="h-12 w-12 mx-auto mb-4 text-blue-600 animate-pulse" />
+            <h3 className="text-lg font-semibold mb-2">Analyzing Risk Factors...</h3>
+            <p className="text-gray-600">AI is evaluating your assets for potential risks</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Risk Analysis Results */}
       {riskAnalysis && !loading && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Risk Analysis Results
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">
-                  {riskAnalysisTypes.find(t => t.id === riskAnalysis.analysisId)?.title || 'Analysis'}
-                </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => runRiskAnalysis(
-                    riskAnalysisTypes.find(t => t.id === riskAnalysis.analysisId)?.query ||
-                    'Refresh risk analysis',
-                    riskAnalysis.analysisId
-                  )}
-                  disabled={loading}
-                >
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Main Risk Assessment */}
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <h3 className="font-semibold text-red-800 mb-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Risk Assessment Summary
-              </h3>
-              <div className="text-sm text-red-700 whitespace-pre-wrap">
-                {riskAnalysis.response}
-              </div>
-            </div>
+        <div className="space-y-6">
+          {riskAnalysis.error ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center text-red-600">
+                  <AlertTriangle className="h-12 w-12 mx-auto mb-4" />
+                  <p>{riskAnalysis.error}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Risk Summary */}
+              {riskAnalysis.structured?.riskSummary && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Shield className="h-5 w-5" />
+                      <span>Risk Overview</span>
+                      {lastAnalysis && (
+                        <Badge variant="outline">
+                          Last updated: {lastAnalysis.toLocaleTimeString()}
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-700 mb-4">{riskAnalysis.structured.riskSummary}</p>
 
-            {/* Structured Recommendations */}
-            {riskAnalysis.structured?.recommendations && riskAnalysis.structured.recommendations.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Priority Actions
-                </h3>
-                <div className="space-y-3">
-                  {riskAnalysis.structured.recommendations.map((rec, index) => {
-                    const priority = index === 0 ? 'high' : index < 3 ? 'medium' : 'low';
-                    const riskLevel = riskLevels[priority];
+                    {riskAnalysis.structured.overallRiskLevel && (
+                      <div className="flex items-center space-x-4">
+                        <span className="text-sm font-medium">Overall Risk Level:</span>
+                        <Badge className={getRiskColor(riskAnalysis.structured.overallRiskLevel)}>
+                          {riskAnalysis.structured.overallRiskLevel}
+                        </Badge>
+                        <Progress
+                          value={getRiskScore(riskAnalysis.structured.overallRiskLevel)}
+                          className="w-32"
+                        />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
-                    return (
-                      <div key={index} className={`flex items-start gap-3 p-4 rounded-lg border ${riskLevel.bgColor}`}>
-                        <div className={`w-8 h-8 rounded-full ${riskLevel.color} text-white text-sm flex items-center justify-center flex-shrink-0`}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-1">
-                            <div className={`text-sm font-medium ${riskLevel.textColor}`}>
-                              Priority {index + 1}
+              {/* High Priority Risks */}
+              {riskAnalysis.structured?.highPriorityRisks && riskAnalysis.structured.highPriorityRisks.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-red-600">
+                      <AlertTriangle className="h-5 w-5" />
+                      <span>High Priority Risks</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {riskAnalysis.structured.highPriorityRisks.map((risk, index) => (
+                        <div key={index} className="border-l-4 border-red-500 pl-4 py-2">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-semibold text-red-700">{risk.asset || `Risk ${index + 1}`}</h4>
+                              <p className="text-gray-700">{risk.description}</p>
+                              {risk.timeframe && (
+                                <div className="flex items-center space-x-1 mt-1 text-sm text-gray-500">
+                                  <Clock className="h-4 w-4" />
+                                  <span>Expected timeframe: {risk.timeframe}</span>
+                                </div>
+                              )}
                             </div>
-                            <Badge variant="outline" className={`text-xs ${riskLevel.textColor}`}>
-                              {riskLevel.label}
+                            {risk.severity && (
+                              <Badge className={getRiskColor(risk.severity)}>
+                                {risk.severity}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Risk by Category */}
+              {riskAnalysis.structured?.riskCategories && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Risk Breakdown by Category</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {Object.entries(riskAnalysis.structured.riskCategories).map(([category, data]) => (
+                        <div key={category} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold capitalize">{category.replace('_', ' ')}</h4>
+                            <Badge className={getRiskColor(data.level)}>
+                              {data.level}
                             </Badge>
                           </div>
-                          <div className="text-sm text-gray-700">{rec}</div>
+                          <p className="text-gray-700 text-sm mb-2">{data.description}</p>
+                          <Progress value={getRiskScore(data.level)} className="w-full" />
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-            {/* Analysis Metadata */}
-            <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t">
-              <span>Analysis Type: {riskAnalysis.analysisType}</span>
-              <span>Generated: {formatTime(riskAnalysis.timestamp)}</span>
-              <span>Data Included: {riskAnalysis.dataIncluded ? 'Yes' : 'No'}</span>
-            </div>
+              {/* Recommendations */}
+              {riskAnalysis.structured?.recommendations && riskAnalysis.structured.recommendations.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <TrendingDown className="h-5 w-5 text-green-600" />
+                      <span>Risk Mitigation Recommendations</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {riskAnalysis.structured.recommendations.map((rec, index) => (
+                        <div key={index} className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                          <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-gray-700">{rec}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Detailed Analysis */}
+              {riskAnalysis.response && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detailed Risk Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="prose prose-sm max-w-none text-gray-700">
+                      {riskAnalysis.response.split('\n').map((paragraph, index) => (
+                        paragraph.trim() && <p key={index} className="mb-2">{paragraph}</p>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Analysis Metadata */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center space-x-4">
+                      <span>Model: {aiService.getModelConfig(selectedModel)?.name}</span>
+                      {riskAnalysis.cost && <span>Cost: ${riskAnalysis.cost.toFixed(4)}</span>}
+                    </div>
+                    <span>Generated: {new Date().toLocaleString()}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {!riskAnalysis && !loading && assets.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-semibold mb-2">No Assets to Analyze</h3>
+            <p className="text-gray-600">Add some assets to begin risk analysis</p>
           </CardContent>
         </Card>
       )}
-
-      {/* Risk Mitigation Tips */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Risk Mitigation Best Practices
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <h4 className="font-semibold text-gray-800">Preventive Measures</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Regular condition monitoring</li>
-                <li>• Scheduled preventive maintenance</li>
-                <li>• Operator training and procedures</li>
-                <li>• Environmental controls</li>
-              </ul>
-            </div>
-            <div className="space-y-3">
-              <h4 className="font-semibold text-gray-800">Risk Monitoring</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Real-time performance tracking</li>
-                <li>• Trend analysis and alerts</li>
-                <li>• Failure mode identification</li>
-                <li>• Regular risk assessments</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
-}
+};
 
 export default AIRiskAnalysisView;

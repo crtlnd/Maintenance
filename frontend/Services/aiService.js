@@ -1,191 +1,398 @@
-// frontend/Services/aiService.js
-
+// frontend/services/aiService.js
 export class AIService {
   constructor() {
     this.baseURL = '/api/ai';
+    this.defaultModel = 'grok-3-mini';
+    this.models = new Map();
+    this.initializeModels();
+  }
+
+  initializeModels() {
+    // Default Grok model configurations (will be updated from server)
+    const grokModels = [
+      {
+        id: 'grok-3-mini',
+        name: 'Grok 3 Mini',
+        provider: 'X.AI',
+        credits: 1,
+        description: 'Fast and efficient for standard maintenance analysis',
+        maxTokens: 1000,
+        temperature: 0.3,
+        tier: 'basic'
+      },
+      {
+        id: 'grok-3',
+        name: 'Grok 3',
+        provider: 'X.AI',
+        credits: 3,
+        description: 'Enhanced reasoning for complex maintenance scenarios',
+        maxTokens: 1500,
+        temperature: 0.3,
+        tier: 'standard'
+      },
+      {
+        id: 'grok-4',
+        name: 'Grok 4',
+        provider: 'X.AI',
+        credits: 5,
+        description: 'Advanced analysis with deeper insights and recommendations',
+        maxTokens: 2000,
+        temperature: 0.2,
+        tier: 'premium'
+      }
+    ];
+
+    grokModels.forEach(model => {
+      this.models.set(model.id, model);
+    });
   }
 
   /**
-   * Get AI insights with structured analysis
+   * Get available AI models from server
    */
-  async getInsights(request) {
+  async getModels() {
     try {
-      console.log('Making AI insights request:', request);
-      console.log('Token:', localStorage.getItem('token'));
+      const response = await fetch(`${this.baseURL}/models`, {
+        headers: {
+          'Authorization': `Bearer ${this.getAuthToken()}`
+        }
+      });
 
-      const response = await fetch(`${this.baseURL}/insights`, {
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update local models with server data
+        if (data.models) {
+          this.models.clear();
+          Object.entries(data.models).forEach(([id, config]) => {
+            this.models.set(id, {
+              id,
+              name: config.name,
+              provider: 'X.AI',
+              credits: config.credits,
+              description: config.description,
+              maxTokens: config.maxTokens,
+              temperature: config.temperature,
+              tier: config.credits <= 1 ? 'basic' : config.credits <= 3 ? 'standard' : 'premium'
+            });
+          });
+        }
+
+        return Array.from(this.models.values());
+      }
+    } catch (error) {
+      console.log('Using default models, server unavailable:', error.message);
+    }
+
+    // Fallback to local models if server is unavailable
+    return Array.from(this.models.values());
+  }
+
+  /**
+   * Get model configuration by ID
+   */
+  getModelConfig(modelId) {
+    return this.models.get(modelId) || this.models.get(this.defaultModel);
+  }
+
+  /**
+   * Set the default model for requests
+   */
+  setDefaultModel(modelId) {
+    if (this.models.has(modelId)) {
+      this.defaultModel = modelId;
+    }
+  }
+
+  /**
+   * Enhanced chat method using your backend /query endpoint
+   */
+  async chat(message, context = {}, options = {}) {
+    const modelId = options.model || this.defaultModel;
+
+    try {
+      const response = await fetch(`${this.baseURL}/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${this.getAuthToken()}`
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify({
+          query: message,
+          model: modelId
+        })
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('API Error:', errorData);
-
-        // Handle specific errors
-        if (response.status === 404 && errorData.error === 'User not found') {
-          throw new Error('Authentication issue - please try logging in again');
-        }
-
-        if (response.status === 403) {
-          throw new Error('AI features require an upgraded subscription plan');
-        }
-
-        throw new Error(errorData.error || `API Error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Request failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      console.log('AI response:', data);
-      return data;
+      const result = await response.json();
 
+      return {
+        response: result.response,
+        model: result.model,
+        creditsUsed: result.creditsUsed,
+        remainingCredits: result.remainingCredits
+      };
     } catch (error) {
-      console.error('Error getting AI insights:', error);
-
-      // Return a mock response for testing if API fails
-      if (error.message.includes('Authentication issue') || error.message.includes('User not found')) {
-        console.log('Returning mock response for testing...');
-        return {
-          response: `Mock AI Analysis for testing:\n\nBased on your ${request.query}, here are some insights:\n\n1. Your maintenance data shows typical patterns\n2. Consider implementing predictive maintenance strategies\n3. Regular inspections can reduce unexpected failures\n\nThis is a mock response while we debug the authentication issue.`,
-          structured: {
-            summary: 'Mock analysis summary',
-            recommendations: [
-              'Review maintenance schedules',
-              'Implement condition monitoring',
-              'Update asset tracking systems'
-            ],
-            type: request.analysisType || 'general',
-            timestamp: new Date().toISOString()
-          },
-          analysisType: request.analysisType || 'general',
-          dataIncluded: request.includeData || false
-        };
-      }
-
+      console.error('AI chat error:', error);
       throw error;
     }
   }
 
   /**
-   * Get risk analysis specifically
+   * Enhanced insights analysis using your backend /insights endpoint
    */
-  async getRiskAnalysis(query) {
-    return this.getInsights({
-      query: query || 'Analyze the risk profile of my assets and identify high-priority maintenance needs',
-      analysisType: 'risk',
-      includeData: true
-    });
-  }
+  async getInsights(analysisType, data, options = {}) {
+    const modelId = options.model || this.getRecommendedModel(analysisType);
 
-  /**
-   * Get predictive analysis specifically
-   */
-  async getPredictiveAnalysis(query) {
-    return this.getInsights({
-      query: query || 'Predict potential failures and recommend preventive maintenance schedules',
-      analysisType: 'predictive',
-      includeData: true
-    });
-  }
-
-  /**
-   * Chat with AI (backwards compatibility)
-   */
-  async chat(query) {
-    try {
-      console.log('Making AI chat request:', query);
-
-      const response = await fetch(`${this.baseURL}/query`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ query })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Chat API Error:', errorData);
-
-        // Return mock response for testing
-        if (response.status === 404 || response.status === 403) {
-          return {
-            response: `Mock AI Assistant Response:\n\nRegarding "${query}":\n\nI understand you're asking about maintenance operations. While I work on connecting to the AI service, here are some general recommendations:\n\n• Regular preventive maintenance reduces unexpected failures\n• Keep detailed maintenance logs for better insights\n• Monitor asset performance trends\n• Consider predictive maintenance technologies\n\nThis is a temporary mock response while we resolve the connection issue.`
-          };
-        }
-
-        throw new Error(errorData.error || 'Failed to get AI response');
-      }
-
-      return await response.json();
-
-    } catch (error) {
-      console.error('Error in AI chat:', error);
-
-      // Return mock response if API fails
-      return {
-        response: `I'm currently experiencing connection issues with the AI service. This is a mock response for testing purposes.\n\nYour question: "${query}"\n\nGeneral maintenance guidance:\n• Focus on preventive maintenance\n• Monitor critical asset performance\n• Keep maintenance records updated\n• Plan for upcoming maintenance needs\n\nPlease check the browser console for technical details about the connection issue.`
-      };
-    }
-  }
-
-  /**
-   * Quick analysis presets
-   */
-  async getQuickRiskAssessment() {
-    return this.getInsights({
-      query: 'Provide a quick risk assessment of my maintenance portfolio. What needs immediate attention?',
-      analysisType: 'risk',
-      includeData: true
-    });
-  }
-
-  async getQuickPredictiveInsights() {
-    return this.getInsights({
-      query: 'What failures are likely in the next 30 days? What preventive actions should I take?',
-      analysisType: 'predictive',
-      includeData: true
-    });
-  }
-
-  async getQuickCostOptimization() {
-    return this.getInsights({
-      query: 'How can I reduce maintenance costs while maintaining reliability?',
-      analysisType: 'optimization',
-      includeData: true
-    });
-  }
-
-  /**
-   * Check if user has AI access
-   */
-  async checkAIAccess() {
     try {
       const response = await fetch(`${this.baseURL}/insights`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${this.getAuthToken()}`
         },
         body: JSON.stringify({
-          query: 'Test access',
-          includeData: false
+          query: this.buildAnalysisQuery(analysisType, data),
+          analysisType: this.mapAnalysisType(analysisType),
+          includeData: true,
+          model: modelId
         })
       });
 
-      return response.status !== 403;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Insights request failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        response: result.response,
+        structured: result.structured,
+        model: result.model,
+        creditsUsed: result.creditsUsed,
+        remainingCredits: result.remainingCredits,
+        analysisMetadata: {
+          modelUsed: this.getModelConfig(result.model)?.name,
+          analysisType,
+          timestamp: new Date().toISOString()
+        }
+      };
     } catch (error) {
+      console.error('AI insights error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Map frontend analysis types to backend types
+   */
+  mapAnalysisType(analysisType) {
+    const typeMap = {
+      'risk_analysis': 'risk',
+      'predictive_maintenance': 'predictive',
+      'cost_optimization': 'optimization',
+      'performance_insights': 'general'
+    };
+    return typeMap[analysisType] || 'general';
+  }
+
+  /**
+   * Build analysis query based on type
+   */
+  buildAnalysisQuery(analysisType, data) {
+    const queries = {
+      'risk_analysis': 'Analyze the risk profile of my assets and identify high-priority maintenance needs',
+      'predictive_maintenance': 'Predict potential failures and recommend preventive maintenance schedules',
+      'cost_optimization': 'Identify cost optimization opportunities in my maintenance operations',
+      'performance_insights': 'Provide insights on asset performance trends and optimization opportunities'
+    };
+    return queries[analysisType] || 'Analyze my maintenance data and provide actionable insights';
+  }
+
+  /**
+   * Risk analysis using specific backend endpoint
+   */
+  async analyzeRisk(assets, options = {}) {
+    const modelId = options.model || 'grok-3'; // Use standard model for risk analysis
+
+    try {
+      const response = await fetch(`${this.baseURL}/risk-analysis`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getAuthToken()}`
+        },
+        body: JSON.stringify({
+          model: modelId,
+          includeData: true
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Risk analysis failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return {
+        response: result.response,
+        structured: result.structured,
+        model: result.model,
+        creditsUsed: result.creditsUsed,
+        remainingCredits: result.remainingCredits
+      };
+    } catch (error) {
+      console.error('Risk analysis error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Predictive analysis using backend endpoint
+   */
+  async getPredictiveAnalysis(assets, timeframe = '30d', options = {}) {
+    const modelId = options.model || 'grok-3'; // Use standard model for predictions
+
+    try {
+      const response = await fetch(`${this.baseURL}/predictive-analysis`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getAuthToken()}`
+        },
+        body: JSON.stringify({
+          model: modelId,
+          includeData: true,
+          timeframe: timeframe
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Predictive analysis failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return {
+        response: result.response,
+        structured: result.structured,
+        model: result.model,
+        creditsUsed: result.creditsUsed,
+        remainingCredits: result.remainingCredits
+      };
+    } catch (error) {
+      console.error('Predictive analysis error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cost optimization analysis
+   */
+  async optimizeCosts(data, options = {}) {
+    return this.getInsights('cost_optimization', data, {
+      ...options,
+      model: options.model || 'grok-3-mini' // Use basic model for cost optimization
+    });
+  }
+
+  /**
+   * Get recommended model for specific analysis types
+   */
+  getRecommendedModel(analysisType) {
+    const recommendations = {
+      'risk_analysis': 'grok-3',
+      'predictive_maintenance': 'grok-3',
+      'cost_optimization': 'grok-3-mini',
+      'performance_insights': 'grok-3-mini',
+      'general_chat': 'grok-3-mini'
+    };
+
+    return recommendations[analysisType] || this.defaultModel;
+  }
+
+  /**
+   * Get user's AI credits
+   */
+  async getCredits() {
+    try {
+      const response = await fetch(`${this.baseURL}/credits`, {
+        headers: {
+          'Authorization': `Bearer ${this.getAuthToken()}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          credits: data.credits,
+          models: data.models
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching credits:', error);
+    }
+
+    return { credits: 0, models: {} };
+  }
+
+  /**
+   * Calculate estimated cost in credits for analysis
+   */
+  calculateCost(modelId) {
+    const model = this.getModelConfig(modelId);
+    return model?.credits || 1;
+  }
+
+  /**
+   * Get authentication token
+   */
+  getAuthToken() {
+    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  }
+
+  /**
+   * Validate model availability and user permissions
+   */
+  async validateModelAccess(modelId) {
+    try {
+      const creditsData = await this.getCredits();
+      const model = this.getModelConfig(modelId);
+
+      return creditsData.credits >= (model?.credits || 1);
+    } catch (error) {
+      console.error('Model validation error:', error);
       return false;
     }
   }
+
+  /**
+   * Get usage statistics (placeholder for future implementation)
+   */
+  async getUsageStats(timeframe = '24h') {
+    try {
+      const response = await fetch(`${this.baseURL}/usage?timeframe=${timeframe}`, {
+        headers: {
+          'Authorization': `Bearer ${this.getAuthToken()}`
+        }
+      });
+
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error('Error fetching usage stats:', error);
+    }
+
+    return null;
+  }
 }
 
-export const aiService = new AIService();
+// Create and export singleton instance
+const aiService = new AIService();
 export default aiService;

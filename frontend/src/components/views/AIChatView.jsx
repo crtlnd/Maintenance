@@ -1,18 +1,23 @@
-// frontend/src/components/views/AIChatView.jsx
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageSquare, Loader2, AlertCircle, User, Bot } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import aiService from '../../../Services/aiService';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Bot, User, Settings, Loader2, DollarSign, Clock } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import AIModelSelector from '../ui/AIModelSelector';
+import aiService from '../../../services/aiService';
 
-function AIChatView() {
-  const { user } = useAuth();
+const AIChatView = () => {
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  const [sessionStats, setSessionStats] = useState({
+    messagesCount: 0,
+    totalCost: 0,
+    tokensUsed: 0
+  });
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -23,226 +28,268 @@ function AIChatView() {
     scrollToBottom();
   }, [messages]);
 
-  // Add welcome message on component mount
   useEffect(() => {
-    setMessages([
-      {
-        role: 'assistant',
-        content: "Hello! I'm your AI maintenance assistant. I can help you with asset management, maintenance planning, risk analysis, and answer questions about your equipment. What would you like to know?",
-        timestamp: new Date()
-      }
-    ]);
+    // Add welcome message
+    const welcomeMessage = {
+      id: Date.now(),
+      type: 'assistant',
+      content: "Hello! I'm your AI maintenance assistant. I can help you with maintenance planning, risk analysis, troubleshooting, and insights based on your data. What would you like to know?",
+      timestamp: new Date(),
+      model: selectedModel
+    };
+    setMessages([welcomeMessage]);
   }, []);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
 
     const userMessage = {
-      role: 'user',
-      content: input.trim(),
+      id: Date.now(),
+      type: 'user',
+      content: inputMessage,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-    setError(null);
+    setInputMessage('');
+    setIsLoading(true);
 
     try {
-      // Call your AI service
-      const response = await aiService.chat(userMessage.content);
-
-      const aiMessage = {
-        role: 'assistant',
-        content: response.response,
-        timestamp: new Date()
+      // Get user context (you might want to pass actual user data here)
+      const context = {
+        userId: 'current-user',
+        sessionId: 'chat-session',
+        conversationHistory: messages.slice(-5) // Last 5 messages for context
       };
 
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setError(error.message || 'Failed to get AI response');
+      const response = await aiService.chat(inputMessage, context, {
+        model: selectedModel
+      });
 
+      const assistantMessage = {
+        id: Date.now() + 1,
+        type: 'assistant',
+        content: response.response || response.message,
+        timestamp: new Date(),
+        model: selectedModel,
+        cost: response.cost,
+        tokensUsed: response.usage?.totalTokens
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Update session stats
+      setSessionStats(prev => ({
+        messagesCount: prev.messagesCount + 1,
+        totalCost: prev.totalCost + (response.cost || 0),
+        tokensUsed: prev.tokensUsed + (response.usage?.totalTokens || 0)
+      }));
+
+    } catch (error) {
+      console.error('Chat error:', error);
       const errorMessage = {
-        role: 'assistant',
-        content: "I apologize, but I'm having trouble responding right now. Please try again in a moment.",
+        id: Date.now() + 1,
+        type: 'assistant',
+        content: "I'm sorry, I encountered an error processing your message. Please try again.",
         timestamp: new Date(),
         isError: true
       };
-
       setMessages(prev => [...prev, errorMessage]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSendMessage();
     }
   };
 
-  const formatTime = (timestamp) => {
+  const formatTimestamp = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit'
     });
   };
 
-  const suggestedQuestions = [
-    "What assets need maintenance this week?",
-    "How can I reduce maintenance costs?",
-    "What are the highest risk items in my portfolio?",
-    "Show me predictive maintenance recommendations",
-    "What's the optimal maintenance schedule for pumps?"
-  ];
-
-  const handleSuggestedQuestion = (question) => {
-    setInput(question);
+  const clearChat = () => {
+    setMessages([]);
+    setSessionStats({ messagesCount: 0, totalCost: 0, tokensUsed: 0 });
   };
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto p-6">
+    <div className="h-full flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <MessageSquare className="h-6 w-6 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold">AI Chat Assistant</h1>
-            <p className="text-gray-600">Ask questions about your maintenance operations</p>
-          </div>
-        </div>
-        <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-          Credits: {user?.aiCredits || user?.credits || 0}
-        </div>
-      </div>
-
-      {/* Chat Container */}
-      <Card className="flex-1 flex flex-col">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Chat with AI Assistant</CardTitle>
-        </CardHeader>
-
-        <CardContent className="flex-1 flex flex-col">
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4 max-h-96">
-            {messages.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <MessageSquare className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>Start a conversation with your AI assistant</p>
-              </div>
-            ) : (
-              messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex gap-3 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  {message.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <Bot className="h-4 w-4 text-blue-600" />
-                    </div>
-                  )}
-
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : message.isError
-                        ? 'bg-red-50 text-red-800 border border-red-200'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    <p className={`text-xs mt-1 ${
-                      message.role === 'user'
-                        ? 'text-blue-200'
-                        : 'text-gray-500'
-                    }`}>
-                      {formatTime(message.timestamp)}
-                    </p>
-                  </div>
-
-                  {message.role === 'user' && (
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                      <User className="h-4 w-4 text-white" />
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-
-            {loading && (
-              <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Thinking...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
+      <div className="bg-white border-b p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Bot className="h-6 w-6 text-blue-600" />
+            <div>
+              <h1 className="text-xl font-semibold">AI Assistant</h1>
+              <p className="text-sm text-gray-500">
+                Powered by {aiService.getModelConfig(selectedModel)?.name}
+              </p>
+            </div>
           </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          {/* Suggested Questions (only show when no messages) */}
-          {messages.length <= 1 && (
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Try asking:</p>
-              <div className="flex flex-wrap gap-2">
-                {suggestedQuestions.map((question, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSuggestedQuestion(question)}
-                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full transition-colors"
-                  >
-                    {question}
-                  </button>
-                ))}
+          <div className="flex items-center space-x-2">
+            {/* Session Stats */}
+            <div className="flex items-center space-x-3 text-sm text-gray-500 mr-4">
+              <div className="flex items-center space-x-1">
+                <Clock className="h-4 w-4" />
+                <span>{sessionStats.messagesCount}</span>
               </div>
-            </div>
-          )}
-
-          {/* Input Area */}
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask about your maintenance operations..."
-              disabled={loading}
-              className="flex-1"
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              size="sm"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
+              {sessionStats.totalCost > 0 && (
+                <div className="flex items-center space-x-1">
+                  <DollarSign className="h-4 w-4" />
+                  <span>${sessionStats.totalCost.toFixed(4)}</span>
+                </div>
               )}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowModelSelector(!showModelSelector)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearChat}
+            >
+              Clear
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Model Selector */}
+        {showModelSelector && (
+          <div className="mt-4">
+            <AIModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              variant="compact"
+              showDetails={true}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-4 ${
+                message.type === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : message.isError
+                  ? 'bg-red-50 border border-red-200'
+                  : 'bg-white border border-gray-200'
+              }`}
+            >
+              <div className="flex items-start space-x-2">
+                {message.type === 'assistant' && (
+                  <Bot className={`h-5 w-5 mt-0.5 ${message.isError ? 'text-red-500' : 'text-blue-600'}`} />
+                )}
+                {message.type === 'user' && (
+                  <User className="h-5 w-5 mt-0.5 text-white" />
+                )}
+
+                <div className="flex-1">
+                  <div className="prose prose-sm max-w-none">
+                    <p className={message.isError ? 'text-red-700' : ''}>{message.content}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2 text-xs opacity-70">
+                    <span>{formatTimestamp(message.timestamp)}</span>
+
+                    {message.type === 'assistant' && !message.isError && (
+                      <div className="flex items-center space-x-2">
+                        {message.model && (
+                          <Badge variant="outline" className="text-xs">
+                            {aiService.getModelConfig(message.model)?.name}
+                          </Badge>
+                        )}
+                        {message.cost && (
+                          <span className="text-xs">${message.cost.toFixed(4)}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 max-w-[80%]">
+              <div className="flex items-center space-x-2">
+                <Bot className="h-5 w-5 text-blue-600" />
+                <div className="flex items-center space-x-1">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-gray-500">Thinking...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="bg-white border-t p-4">
+        <div className="flex items-center space-x-2">
+          <div className="flex-1 relative">
+            <Input
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask me anything about maintenance, assets, or get insights..."
+              disabled={isLoading}
+              className="pr-20"
+            />
+
+            {selectedModel && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                <Badge variant="outline" className="text-xs">
+                  {aiService.getModelConfig(selectedModel)?.name.split(' ')[0]}
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          <Button
+            onClick={handleSendMessage}
+            disabled={!inputMessage.trim() || isLoading}
+            size="icon"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+
+        <div className="mt-2 text-xs text-gray-500 text-center">
+          Using {aiService.getModelConfig(selectedModel)?.name} •
+          Press Enter to send, Shift+Enter for new line
+        </div>
+      </div>
     </div>
   );
-}
+};
 
 export default AIChatView;

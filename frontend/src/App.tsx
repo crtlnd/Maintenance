@@ -131,11 +131,73 @@ function AppContent() {
   const handleGetStarted = () => navigate('/auth?mode=signup');
   const handleLogin = () => navigate('/auth?mode=login');
 
-  const handleAddAsset = (asset) => {
-    const newId = Date.now() + Math.floor(Math.random() * 1000);
-    const newAsset = { ...asset, id: newId };
-    setAssets(prev => [...prev, newAsset]);
-    return newId;
+  const handleAddAsset = async (asset) => {
+    try {
+      // If it's a demo asset, just add it locally
+      if (asset.isDemo) {
+        const newId = Date.now() + Math.floor(Math.random() * 1000);
+        const newAsset = { ...asset, id: newId };
+        setAssets(prev => [...prev, newAsset]);
+        return newId;
+      }
+
+      // For real assets, save to database
+      const response = await fetch('http://localhost:3000/api/assets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(asset)
+      });
+
+      if (response.ok) {
+        const newAsset = await response.json();
+        setAssets(prev => [...prev, newAsset]);
+        return newAsset.id;
+      } else {
+        console.error('Failed to create asset:', response.status);
+        throw new Error('Failed to create asset');
+      }
+    } catch (error) {
+      console.error('Error creating asset:', error);
+      throw error;
+    }
+  };
+
+  const handleEditAsset = async (updatedAsset) => {
+    try {
+      // If it's a demo asset, just update locally
+      if (updatedAsset.isDemo) {
+        setAssets(prev => prev.map(asset =>
+          asset.id === updatedAsset.id ? updatedAsset : asset
+        ));
+        return;
+      }
+
+      // For real assets, update in database
+      const response = await fetch(`http://localhost:3000/api/assets/${updatedAsset.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedAsset)
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setAssets(prev => prev.map(asset =>
+          asset.id === updatedAsset.id ? updated : asset
+        ));
+      } else {
+        console.error('Failed to update asset:', response.status);
+        throw new Error('Failed to update asset');
+      }
+    } catch (error) {
+      console.error('Error updating asset:', error);
+      throw error;
+    }
   };
 
   const handleCreateDemoData = async () => {
@@ -249,6 +311,7 @@ function AppContent() {
                 handleAddMaintenanceTask={handleAddMaintenanceTask}
                 handleCompleteTask={handleCompleteTask}
                 handleCreateDemoData={handleCreateDemoData}
+                handleEditAsset={handleEditAsset}
               />
             </MainLayout>
           )
